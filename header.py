@@ -63,8 +63,8 @@ class Header(QWidget):
         for btn in [self.selectCustomerBtn, self.selectProductBtn, self.voidSaleBtn]:
             btn.setFixedHeight(28)
 
-        buttonLayout.addWidget(self.selectCustomerBtn)
-        buttonLayout.addWidget(self.selectProductBtn)
+        # buttonLayout.addWidget(self.selectCustomerBtn)
+        # buttonLayout.addWidget(self.selectProductBtn)
         buttonLayout.addWidget(self.voidSaleBtn)
 
         headerLayout.addLayout(buttonLayout)

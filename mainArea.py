@@ -5,7 +5,8 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QCheckBox, QTextEdit,QRadioButton,QButtonGroup
 )
 from PySide6.QtCore import Qt
-
+from dbClient import DbServer
+from addCustomer import CustomerForm
 
 class MainArea(QWidget):
     def __init__(self):
@@ -69,6 +70,8 @@ class MainArea(QWidget):
         customerBtnLayout.addWidget(self.addCustomerBtn)
         customerBtnLayout.addWidget(self.clearCustomerBtn)
         mainAreaLayout.addLayout(customerBtnLayout)
+
+        self.addCustomerBtn.clicked.connect(self.openCustomerForm)
 
         mainAreaLayout.addSpacing(20)
 
@@ -245,3 +248,11 @@ class MainArea(QWidget):
             if btn:
                 btn.clicked.disconnect()
                 btn.clicked.connect(lambda _, r=i: self.deleteRow(r))
+
+    # ------------------- Open Customer Form -------------------
+    def openCustomerForm(self):
+        self.customerForm = CustomerForm()
+        self.customerForm.show()
+
+
+

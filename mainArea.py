@@ -75,6 +75,8 @@ class MainArea(QWidget):
         customerBtnLayout.addWidget(self.clearCustomerBtn)
         mainAreaLayout.addLayout(customerBtnLayout)
 
+        self.clearCustomerBtn.clicked.connect(self.clearCustomerData)
+
         self.addCustomerBtn.clicked.connect(self.openCustomerForm)
 
         mainAreaLayout.addSpacing(20)
@@ -124,6 +126,9 @@ class MainArea(QWidget):
         productBtnLayout.addWidget(self.selectProductBtn)
         productBtnLayout.addWidget(self.clearProductBtn)
         mainAreaLayout.addLayout(productBtnLayout)
+
+        # Connect the Clear button
+        self.clearProductBtn.clicked.connect(self.clearProductFields)
 
         mainAreaLayout.addSpacing(20)
 
@@ -200,6 +205,17 @@ class MainArea(QWidget):
         mainAreaLayout.addLayout(actionBtnLayout)
 
         self.setLayout(mainAreaLayout)
+
+    # ------------------- Clear Customer Data -------------------
+    def clearCustomerData(self):
+        self.selectedCustomerDetails = {}
+        self.customerInput.clear()
+
+    # ------------------- Clear Product Fields -------------------
+    def clearProductFields(self):
+        self.productNameInput.clear()
+        self.qtyInput.clear()
+        self.priceInput.clear()
 
     # ------------------- Add Product Logic -------------------
     def addProductRow(self):

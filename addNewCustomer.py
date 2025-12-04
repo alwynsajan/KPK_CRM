@@ -110,8 +110,7 @@ class CustomerForm(QWidget):
         self.selectedCustomerDetails["name"] = name
         self.selectedCustomerDetails["address"] = self.addressInput.text().strip()
         self.selectedCustomerDetails["phone"] = self.phoneInput.text().strip()
-        print(self.customerData) 
-        print(self.selectedCustomerDetails)
+        #print(self.customerData) 
 
         # Call the callback to update the input in MainArea
         self.callback()

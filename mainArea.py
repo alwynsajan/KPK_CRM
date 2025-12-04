@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from dbClient import DbServer
 from addNewCustomer import CustomerForm
+from customerSelectorDialog import CustomerSelectorDialog
 
 class MainArea(QWidget):
     def __init__(self):
@@ -74,6 +75,14 @@ class MainArea(QWidget):
         customerBtnLayout.addWidget(self.addCustomerBtn)
         customerBtnLayout.addWidget(self.clearCustomerBtn)
         mainAreaLayout.addLayout(customerBtnLayout)
+
+        self.selectCustomerBtn.clicked.connect(
+                                    lambda: CustomerSelectorDialog(
+                                        parent=self,
+                                        customerInput=self.customerInput,
+                                        selectedCustomerDetails=self.selectedCustomerDetails
+                                    ).exec()
+                                )
 
         self.clearCustomerBtn.clicked.connect(self.clearCustomerData)
 

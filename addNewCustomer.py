@@ -2,8 +2,10 @@ from PySide6.QtWidgets import  QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPus
 
 # ------------------- Customer Form Window -------------------
 class CustomerForm(QWidget):
-    def __init__(self):
+    def __init__(self,selectedCustomerDetails,callback):
         super().__init__()
+        self.selectedCustomerDetails = selectedCustomerDetails
+        self.callback = callback
         self.setWindowTitle("Add Customer")
         self.setFixedWidth(400)
 
@@ -105,6 +107,13 @@ class CustomerForm(QWidget):
             "abn": self.abnInput.text().strip(),
         }
 
-        print(self.customerData)  
+        self.selectedCustomerDetails["name"] = name
+        self.selectedCustomerDetails["address"] = self.addressInput.text().strip()
+        self.selectedCustomerDetails["phone"] = self.phoneInput.text().strip()
+        print(self.customerData) 
+        print(self.selectedCustomerDetails)
+
+        # Call the callback to update the input in MainArea
+        self.callback()
 
         self.close()  # Close the form window

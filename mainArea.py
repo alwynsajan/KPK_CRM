@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from dbClient import DbServer
-from addCustomer import CustomerForm
+from addNewCustomer import CustomerForm
 
 class MainArea(QWidget):
     def __init__(self):
@@ -15,6 +15,10 @@ class MainArea(QWidget):
         mainAreaLayout = QVBoxLayout()
         mainAreaLayout.setAlignment(Qt.AlignTop)
         mainAreaLayout.setSpacing(15)
+
+        # ------------------- Internal State Variables -------------------
+        self.selectedCustomerDetails = {} 
+        self.finalProductList = [] 
 
         # ------------------- Button Styles -------------------
         primaryBtnStyle = """
@@ -251,8 +255,15 @@ class MainArea(QWidget):
 
     # ------------------- Open Customer Form -------------------
     def openCustomerForm(self):
-        self.customerForm = CustomerForm()
+         # Pass the dictionary and a callback to update the input
+        self.customerForm = CustomerForm(self.selectedCustomerDetails,self.updateCustomerInput)
         self.customerForm.show()
+
+    # ------------------- Update Customer Input -------------------
+    def updateCustomerInput(self):
+        # Update the input field with saved customer name
+        if "name" in self.selectedCustomerDetails:
+            self.customerInput.setText(self.selectedCustomerDetails["name"])
 
 
 

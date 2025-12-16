@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import  QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QRadioButton, QWidget
-
+from dbClient import DbClient
 # ------------------- Customer Form Window -------------------
 class CustomerForm(QWidget):
     def __init__(self,selectedCustomerDetails,callback):
@@ -95,24 +95,39 @@ class CustomerForm(QWidget):
 
         customerType = "Business" if self.businessRadio.isChecked() else "Personal"
 
-        # Collect all data
-        self.customerData = {
+        # Collect customer data (MATCH DbServer keys)
+        customerData = {
             "name": name,
-            "type": customerType,
+            "customerType": customerType,
             "email": self.emailInput.text().strip(),
             "phone": self.phoneInput.text().strip(),
             "address": self.addressInput.text().strip(),
             "state": self.stateInput.text().strip(),
             "postcode": self.postcodeInput.text().strip(),
-            "abn": self.abnInput.text().strip(),
+            "ABN": self.abnInput.text().strip(),
         }
 
-        self.selectedCustomerDetails["name"] = name
-        self.selectedCustomerDetails["address"] = self.addressInput.text().strip()
-        self.selectedCustomerDetails["phone"] = self.phoneInput.text().strip()
-        #print(self.customerData) 
+        # ------------------- SAVE TO DATABASE -------------------
+        db = DbClient()
+        response = db.addCustomerData(customerData)
 
-        # Call the callback to update the input in MainArea
+        if response["status"] != "Success":
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.critical(
+                self,
+                "Database Error",
+                response["message"]
+            )
+            return
+
+        # ------------------- UPDATE SELECTED CUSTOMER -------------------
+        self.selectedCustomerDetails.clear()
+        self.selectedCustomerDetails["name"] = name
+        self.selectedCustomerDetails["address"] = customerData["address"]
+        self.selectedCustomerDetails["phone"] = customerData["phone"]
+
+        # ------------------- UPDATE MAIN AREA -------------------
         self.callback()
 
-        self.close()  # Close the form window
+        self.close()
+

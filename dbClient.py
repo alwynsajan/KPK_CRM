@@ -1,7 +1,7 @@
 import mysql.connector
 import json
 
-class DbServer:
+class DbClient:
     def __init__(self, configFile='config.json'):
         # Load database credentials from the config.json file
         self.config = self.loadConfig(configFile)

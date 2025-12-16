@@ -5,21 +5,22 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QCheckBox, QTextEdit,QRadioButton,QButtonGroup
 )
 from PySide6.QtCore import Qt
-from dbClient import DbServer
+from dbClient import DbClient
 from addNewCustomer import CustomerForm
 from customerSelectorDialog import CustomerSelectorDialog
 
 class MainArea(QWidget):
-    def __init__(self):
+    def __init__(self, selectedCustomerDetails=None, finalProductList=None, sidebar=None):
         super().__init__()
+
+        self.selectedCustomerDetails = selectedCustomerDetails or {}
+        self.finalProductList = finalProductList or []
+        self.sidebar = sidebar  # reference to sidebar to update it dynamically
 
         mainAreaLayout = QVBoxLayout()
         mainAreaLayout.setAlignment(Qt.AlignTop)
         mainAreaLayout.setSpacing(15)
 
-        # ------------------- Internal State Variables -------------------
-        self.selectedCustomerDetails = {} 
-        self.finalProductList = [] 
 
         # ------------------- Button Styles -------------------
         primaryBtnStyle = """
@@ -50,9 +51,18 @@ class MainArea(QWidget):
 
         # ------------------- Customer Section -------------------
         mainAreaLayout.addWidget(QLabel("Customer Name:"))
+        mainAreaLayout.itemAt(mainAreaLayout.count() - 1).widget().setStyleSheet("font-size:16px; font-weight:bold; color:black;")
+
         self.customerInput = QLineEdit()
         self.customerInput.setFixedHeight(30)
         self.customerInput.setPlaceholderText("Enter customer name")
+        self.customerInput.setStyleSheet("""
+                                        background-color: #FFFFFF;
+                                        color: black;               
+                                        border: 1px solid #ccc; 
+                                        border-radius: 6px;    
+                                        padding-left: 5px;          
+                                    """)
         mainAreaLayout.addWidget(self.customerInput)
 
         # Customer Buttons
@@ -70,6 +80,7 @@ class MainArea(QWidget):
         for btn in [self.selectCustomerBtn, self.addCustomerBtn, self.clearCustomerBtn]:
             btn.setFixedHeight(28)
             btn.setFixedWidth(140)
+            btn.setCursor(Qt.PointingHandCursor)
 
         customerBtnLayout.addWidget(self.selectCustomerBtn)
         customerBtnLayout.addWidget(self.addCustomerBtn)
@@ -92,24 +103,47 @@ class MainArea(QWidget):
 
         # ------------------- Product Section -------------------
         mainAreaLayout.addWidget(QLabel("Product Name:"))
+        mainAreaLayout.itemAt(mainAreaLayout.count() - 1).widget().setStyleSheet("font-size:16px; font-weight:bold; color:black;")
 
         productFormLayout = QHBoxLayout()
 
         self.productNameInput = QLineEdit()
         self.productNameInput.setFixedHeight(30)
         self.productNameInput.setPlaceholderText("Enter product name")
+        self.productNameInput.setStyleSheet("""
+                                        background-color: #FFFFFF;
+                                        color: black;               
+                                        border: 1px solid #ccc; 
+                                        border-radius: 6px;    
+                                        padding-left: 5px;          
+                                    """)
 
         self.qtyInput = QLineEdit()
         self.qtyInput.setFixedHeight(30)
         self.qtyInput.setPlaceholderText("Enter quantity")
+        self.qtyInput.setStyleSheet("""
+                                        background-color: #FFFFFF;
+                                        color: black;               
+                                        border: 1px solid #ccc; 
+                                        border-radius: 6px;    
+                                        padding-left: 5px;          
+                                    """)
 
         self.priceInput = QLineEdit()
         self.priceInput.setFixedHeight(30)
         self.priceInput.setPlaceholderText("Enter unit price")
+        self.priceInput.setStyleSheet("""
+                                        background-color: #FFFFFF;
+                                        color: black;               
+                                        border: 1px solid #ccc; 
+                                        border-radius: 6px;    
+                                        padding-left: 5px;          
+                                    """)
 
         self.addProductBtn = QPushButton("Add Product")
         self.addProductBtn.setStyleSheet(primaryBtnStyle)
         self.addProductBtn.setFixedHeight(30)
+        self.addProductBtn.setCursor(Qt.PointingHandCursor)
 
         productFormLayout.addWidget(self.productNameInput)
         productFormLayout.addWidget(self.qtyInput)
@@ -131,6 +165,7 @@ class MainArea(QWidget):
         for btn in [self.selectProductBtn, self.clearProductBtn]:
             btn.setFixedHeight(28)
             btn.setFixedWidth(140)
+            btn.setCursor(Qt.PointingHandCursor)
 
         productBtnLayout.addWidget(self.selectProductBtn)
         productBtnLayout.addWidget(self.clearProductBtn)
@@ -154,6 +189,16 @@ class MainArea(QWidget):
         self.productTable.setFixedHeight(180)
         self.productTable.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.productTable.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.productTable.setStyleSheet("""
+                                            QTableWidget {
+                                                background-color: white;
+                                                gridline-color: #cccccc;
+                                            }
+                                            QHeaderView::section {
+                                                background-color: #f0f0f0;
+                                                font-weight: bold;
+                                            }
+""")
 
         mainAreaLayout.addWidget(self.productTable)
 
@@ -164,6 +209,13 @@ class MainArea(QWidget):
         self.notesInput = QLineEdit()
         self.notesInput.setPlaceholderText("Enter note")
         self.notesInput.setFixedHeight(30)
+        self.notesInput.setStyleSheet("""
+                                        background-color: #FFFFFF;
+                                        color: black;               
+                                        border: 1px solid #ccc; 
+                                        border-radius: 6px;    
+                                        padding-left: 5px;          
+                                    """)
         mainAreaLayout.addWidget(self.notesInput)
 
         # ------------------- Payment Options -------------------
@@ -175,9 +227,25 @@ class MainArea(QWidget):
         self.bankRadio = QRadioButton("Bank Transfer")
         self.creditRadio = QRadioButton("Credit")
 
-        # Set font size
+        # Set font size and cursor
         for radio in [self.efposRadio, self.cashRadio, self.bankRadio, self.creditRadio]:
-            radio.setStyleSheet("font-size: 14px;")
+            radio.setStyleSheet("""
+                QRadioButton {
+                    font-size: 14px;
+                    color: black;
+                }
+                QRadioButton::indicator {
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 9px;
+                    background-color: #cccccc;  /* default grey */
+                    border: 1px solid #999999;
+                }
+                QRadioButton::indicator:checked {
+                    background-color: #3498DB;  /* blue when selected */
+                    border: 1px solid #2980B9;
+                }
+            """)
 
         # Group them to allow only one selection
         self.paymentGroup = QButtonGroup(self)

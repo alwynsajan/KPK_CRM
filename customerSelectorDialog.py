@@ -1,11 +1,15 @@
 # customerSelectorDialog.py
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QListWidget, QPushButton, QMessageBox
-from dbClient import DbServer
+from PySide6.QtCore import Qt
+from dbClient import DbClient
 
 class CustomerSelectorDialog(QDialog):
     def __init__(self, parent=None, customerInput=None, selectedCustomerDetails=None):
         super().__init__(parent)
         self.setWindowTitle("Select Customer")
+        self.setMinimumWidth(600)   
+        self.setMinimumHeight(600)  
+
         self.customerInput = customerInput
         self.selectedCustomerDetails = selectedCustomerDetails
 
@@ -25,7 +29,7 @@ class CustomerSelectorDialog(QDialog):
         self.setLayout(layout)
 
     def loadCustomers(self):
-        db = DbServer()
+        db = DbClient()
         customerData = db.getCustomerName()  # returns [(id1, name1), (id2, name2), ...]
 
         if not customerData:
@@ -42,6 +46,12 @@ class CustomerSelectorDialog(QDialog):
             custName = custName.strip()
             custID = custID.strip()
 
+            db = DbClient()
+            # Fetch full details for selected customer
+            customerDetails = db.getCustomerDetails(custID, custName)
+            customerAddress = customerDetails[3] if customerDetails else ""
+            customerPhone = customerDetails[6] if customerDetails else ""
+
             if self.customerInput:
                 self.customerInput.setText(custName)
 
@@ -49,7 +59,9 @@ class CustomerSelectorDialog(QDialog):
                 self.selectedCustomerDetails.clear()
                 self.selectedCustomerDetails.update({
                     "customerID": custID,
-                    "name": custName
+                    "name": custName,
+                    "address": customerAddress,
+                    "phone": customerPhone
                 })
 
             self.accept()

@@ -133,64 +133,29 @@ class DbClient:
             productData["price"]
         ))
 
-    
-    def getProductByName(self, productName):
-        """Check if a product with the given name exists in the productData table."""
-        query = "SELECT productID FROM productData WHERE name = %s"
 
-        try:
-            conn = self.connectToDB()
-            cursor = conn.cursor()
-            cursor.execute(query, (productName,))
-            product = cursor.fetchone()  # Fetch one matching record
-        except mysql.connector.Error as err:
-            print(f"Database Error: {err}")
-            product = None  # Return None in case of an error
-        finally:
-            cursor.close()
-            conn.close()
-
-        return product  # Returns (productID,) if found, else None
-
-
-    def getProductDetails(self, productName):
-        """Retrieve a product by name from the productData table"""
+    def getAllProducts(self):
+        """Retrieve productID, name, and price from productData table"""
         query = """
-        SELECT name, productType, colour, price
-        FROM productdata
-        WHERE name = %s
-    """
-        try:
-            conn = self.connectToDB()
-            cursor = conn.cursor()
-            cursor.execute(query, (productName,))
-            product = cursor.fetchone()  # Fetch one product
-        except mysql.connector.Error as err:
-            print(f"Database Error: {err}")
-            product = None
-        finally:
-            cursor.close()
-            conn.close()
+            SELECT productID, name, price
+            FROM productdata
+            ORDER BY name
+        """
 
-        return product  # Returns tuple (productID, Name, Product_Type, Colour, Price) or None
-    
-    def getProductNamesAndIds(self):
-        """Get all product names and IDs from the database"""
-        query = "SELECT productID, Name FROM productdata"
-        
         try:
             conn = self.connectToDB()
             cursor = conn.cursor()
             cursor.execute(query)
-            products = cursor.fetchall()  # Fetch all results
+            products = cursor.fetchall()  # [(id, name, price), ...]
         except mysql.connector.Error as err:
             print(f"Database Error: {err}")
-            products = []  # Return an empty list on failure
+            products = []
         finally:
             cursor.close()
             conn.close()
-        
-        return products  # Returns a list of tuples [(id1, name1), (id2, name2), ...]
+
+        return products
+
 
     def addPerDaySale(self, saleData):
         """Add or update per-day sales data in the PerdaySale table"""

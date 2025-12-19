@@ -90,7 +90,7 @@ class SideBar(QWidget):
 
         # Update info
         if not self.selectedCustomerDetails:
-            self.infoLabel = QLabel("Select customer to see Sales")
+            self.infoLabel = QLabel("Select customer to see Sales History")
         else:
             cust = self.selectedCustomerDetails
             info = f"Customer: {cust.get('name','')}\nPhone: {cust.get('phone','')}\nAddress: {cust.get('address','')}"

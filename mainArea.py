@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from dbClient import DbClient
 from customerSelectorDialog import CustomerSelectorDialog
+from productSelectorDialog import ProductSelectorDialog
 
 class MainArea(QWidget):
     def __init__(self, selectedCustomerDetails=None, finalProductList=None, sidebar=None):
@@ -34,6 +35,18 @@ class MainArea(QWidget):
                 background-color: #2E86C1;
             }
         """
+        successBtnStyle = """
+                            QPushButton {
+                                background-color: #2ECC71;   /* green */
+                                color: white;
+                                padding: 5px 15px;
+                                border-radius: 5px;
+                                font-size: 14px;
+                            }
+                            QPushButton:hover {
+                                background-color: #27AE60;
+                            }
+                        """
 
         failureBtnStyle = """
             QPushButton {
@@ -134,15 +147,15 @@ class MainArea(QWidget):
                                         padding-left: 5px;          
                                     """)
 
-        self.addProductBtn = QPushButton("Checkout")
-        self.addProductBtn.setStyleSheet(primaryBtnStyle)
-        self.addProductBtn.setFixedHeight(30)
-        self.addProductBtn.setCursor(Qt.PointingHandCursor)
+        self.checkoutBtn = QPushButton("Checkout")
+        self.checkoutBtn.setStyleSheet(successBtnStyle)
+        self.checkoutBtn.setFixedHeight(30)
+        self.checkoutBtn.setCursor(Qt.PointingHandCursor)
 
         productFormLayout.addWidget(self.productNameInput)
         productFormLayout.addWidget(self.qtyInput)
         productFormLayout.addWidget(self.priceInput)
-        productFormLayout.addWidget(self.addProductBtn)
+        productFormLayout.addWidget(self.checkoutBtn)
 
         mainAreaLayout.addLayout(productFormLayout)
 
@@ -168,13 +181,16 @@ class MainArea(QWidget):
         # Connect the Clear button
         self.clearProductBtn.clicked.connect(self.clearProductFields)
 
+        # Connect the Select Product button
+        self.selectProductBtn.clicked.connect(self.openProductSelector)
+
         mainAreaLayout.addSpacing(20)
 
         # ------------------- Product Table -------------------
         self.productTable = QTableWidget()
         self.productTable.setColumnCount(6)
         self.productTable.setHorizontalHeaderLabels(
-            ["Product Name", "Qty", "Price", "Discount", "Total", "Delete"]
+            ["Product Name", "Qty", "Unit Price", "Discount", "Total Price", "Delete"]
         )
 
         self.productTable.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -224,7 +240,11 @@ class MainArea(QWidget):
         mainAreaLayout.addWidget(self.productTable)
 
         # Connect Add Product Button
-        self.addProductBtn.clicked.connect(self.addProductRow)
+        self.checkoutBtn.clicked.connect(lambda: self.addProductRow({
+                                                        "name": self.productNameInput.text().strip(),
+                                                        "price": float(self.priceInput.text().strip() or 0),
+                                                        "qty": float(self.qtyInput.text().strip() or 1)
+                                                    }))
 
         # ------------------- Notes Section -------------------
         self.notesInput = QLineEdit()
@@ -267,6 +287,7 @@ class MainArea(QWidget):
                     border: 1px solid #2980B9;
                 }
             """)
+            radio.setCursor(Qt.PointingHandCursor)
 
         # Group them to allow only one selection
         self.paymentGroup = QButtonGroup(self)
@@ -288,17 +309,17 @@ class MainArea(QWidget):
         actionBtnLayout.setAlignment(Qt.AlignLeft)
 
         self.saveSalesBtn = QPushButton("Save Sales")
-        self.printSalesBtn = QPushButton("Print Sales")
+        self.printInvoiceBtn = QPushButton("Print Invoive")
 
-        self.saveSalesBtn.setStyleSheet(primaryBtnStyle)
-        self.printSalesBtn.setStyleSheet(primaryBtnStyle)
+        self.saveSalesBtn.setStyleSheet(successBtnStyle)
+        self.printInvoiceBtn.setStyleSheet(primaryBtnStyle)
 
-        for btn in [self.saveSalesBtn, self.printSalesBtn]:
+        for btn in [self.saveSalesBtn, self.printInvoiceBtn]:
             btn.setFixedHeight(30)
             btn.setFixedWidth(150)
 
         actionBtnLayout.addWidget(self.saveSalesBtn)
-        actionBtnLayout.addWidget(self.printSalesBtn)
+        actionBtnLayout.addWidget(self.printInvoiceBtn)
 
         mainAreaLayout.addLayout(actionBtnLayout)
 
@@ -316,17 +337,18 @@ class MainArea(QWidget):
         self.priceInput.clear()
 
     # ------------------- Add Product Logic -------------------
-    def addProductRow(self):
-        product = self.productNameInput.text().strip()
-        qty = self.qtyInput.text().strip()
-        price = self.priceInput.text().strip()
+    def addProductRow(self, productData):
 
-        if not product or not qty or not price:
+        name = productData.get("name", "").strip()
+        priceValue = productData.get("price", 0)
+        qtyValue = productData.get("qty", 1)  # default 1 if not provided
+
+        if not name or not priceValue:
             return
 
         try:
-            qtyValue = float(qty)
-            priceValue = float(price)
+            qtyValue = float(qtyValue)
+            priceValue = float(priceValue)
         except ValueError:
             return
 
@@ -335,10 +357,10 @@ class MainArea(QWidget):
         row = self.productTable.rowCount()
         self.productTable.insertRow(row)
 
-        self.productTable.setItem(row, 0, QTableWidgetItem(product))
-        self.productTable.setItem(row, 1, QTableWidgetItem(qty))
-        self.productTable.setItem(row, 2, QTableWidgetItem(price))
-        self.productTable.setItem(row, 3, QTableWidgetItem("0"))
+        self.productTable.setItem(row, 0, QTableWidgetItem(name))
+        self.productTable.setItem(row, 1, QTableWidgetItem(str(qtyValue)))
+        self.productTable.setItem(row, 2, QTableWidgetItem(str(priceValue)))
+        self.productTable.setItem(row, 3, QTableWidgetItem("0"))  # discount or other field
         self.productTable.setItem(row, 4, QTableWidgetItem(str(total)))
 
         deleteBtn = QPushButton("Delete")
@@ -356,6 +378,7 @@ class MainArea(QWidget):
         deleteBtn.clicked.connect(lambda _, r=row: self.deleteRow(r))
         self.productTable.setCellWidget(row, 5, deleteBtn)
 
+
     # ------------------- Delete Row -------------------
     def deleteRow(self, row):
         self.productTable.removeRow(row)
@@ -372,6 +395,12 @@ class MainArea(QWidget):
         # Update the input field with saved customer name
         if "name" in self.selectedCustomerDetails:
             self.customerInput.setText(self.selectedCustomerDetails["name"])
+
+    # ------------------- Open Product Selector -------------------
+    def openProductSelector(self):
+        dialog = ProductSelectorDialog(self, addProductRow=self.addProductRow)
+        dialog.exec()
+
 
 
 

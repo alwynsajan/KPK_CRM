@@ -124,15 +124,15 @@ class DbClient:
     def addProductData(self, productData):
         """Insert new product into the productData table"""
         query = """
-        INSERT INTO productData (name, productType, colour, price)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO productData (productBarCode, name, price)
+        VALUES (%s, %s, %s)
         """
         return self.executeQuery(query, (
+            productData["productBarCode"],
             productData["name"],
-            productData["productType"],
-            productData["colour"],
             productData["price"]
         ))
+
     
     def getProductByName(self, productName):
         """Check if a product with the given name exists in the productData table."""

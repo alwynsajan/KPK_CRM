@@ -4,6 +4,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette, QColor
+from productForm import ProductForm
+
 
 class SideBar(QWidget):
     def __init__(self, selectedCustomerDetails=None):
@@ -25,9 +27,13 @@ class SideBar(QWidget):
 
         # --- Vertical Buttons ---
         self.headerBtns = []
-        btnNames = ["Sales", "Credits", "Misc", "Upload Pdt Details"]
+        btnNames = [ "Add Product to DB", "Miscellanious", "Upload Pdt Details"]
         for name in btnNames:
             btn = QPushButton(name)
+
+            if name == "Add Product to DB":
+                btn.clicked.connect(self.openProductForm)
+
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #3498DB;
@@ -88,3 +94,8 @@ class SideBar(QWidget):
         self.infoLabel.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         self.infoLabel.setWordWrap(True)
         self.scrollLayout.addWidget(self.infoLabel)
+
+    def openProductForm(self):
+        self.productWindow = ProductForm()
+        self.productWindow.show()
+

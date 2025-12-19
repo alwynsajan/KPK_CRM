@@ -140,7 +140,7 @@ class MainArea(QWidget):
                                         padding-left: 5px;          
                                     """)
 
-        self.addProductBtn = QPushButton("Add Product")
+        self.addProductBtn = QPushButton("Checkout")
         self.addProductBtn.setStyleSheet(primaryBtnStyle)
         self.addProductBtn.setFixedHeight(30)
         self.addProductBtn.setCursor(Qt.PointingHandCursor)

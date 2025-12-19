@@ -53,15 +53,50 @@ class CustomerSelectorDialog(QDialog):
         self.customerListWidget.setFocusPolicy(Qt.NoFocus)
 
         self.customerListWidget.setStyleSheet("""
-            QListWidget::item {
-                padding: 8px;
-                border: none;
-            }
-            QListWidget::item:selected {
-                background-color: #3498DB;
-                color: white;
-            }
-        """)
+                                            QListWidget {
+                                                background-color: white;
+                                                border: 1px solid #ddd;
+                                            }
+
+                                            QListWidget::item {
+                                                padding: 8px;
+                                                border: none;
+                                            }
+
+                                            QListWidget::item:selected {
+                                                background-color: #3498DB;
+                                                color: white;
+                                            }
+
+                                            /* --- Vertical Scrollbar --- */
+                                            QScrollBar:vertical {
+                                                background: transparent;
+                                                width: 10px;
+                                                margin: 0px;
+                                            }
+
+                                            QScrollBar::handle:vertical {
+                                                background: lightblue;
+                                                border-radius: 5px;
+                                                min-height: 30px;
+                                            }
+
+                                            QScrollBar::handle:vertical:hover {
+                                                background: #2E86C1;
+                                            }
+
+                                            QScrollBar::add-line:vertical,
+                                            QScrollBar::sub-line:vertical {
+                                                height: 0px;
+                                                background: none;
+                                            }
+
+                                            QScrollBar::add-page:vertical,
+                                            QScrollBar::sub-page:vertical {
+                                                background: none;
+                                            }
+                                        """)
+
 
         self.customerListWidget.itemSelectionChanged.connect(
             self.updateSelectButtonState

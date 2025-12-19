@@ -113,6 +113,15 @@ class ProductForm(QWidget):
         except ValueError:
             QMessageBox.warning(self, "Invalid Price", "Price must be a number.")
             return
+        
+        if not barcode:
+            barcode = 0
+        else:
+            try:
+                barcode = int(barcode)
+            except ValueError:
+                QMessageBox.warning(self, "Invalid Barcode", "Barcode must be a number.")
+                return
 
         db = DbClient()
         response = db.addProductData({

@@ -142,6 +142,20 @@ class CustomerForm(QWidget):
             QMessageBox.warning(self, "Missing Name", "Customer name is required.")
             return
 
+        db = DbClient()
+
+        # ---- Duplicate name check ----
+        existingCustomers = db.getCustomerName()  # [(id, name), ...]
+        existingNames = [custName.lower() for _, custName in existingCustomers]
+
+        if name.lower() in existingNames:
+            QMessageBox.critical(
+                self,
+                "Duplicate Customer",
+                f"A customer with the name '{name}' already exists."
+            )
+            return
+
         customerType = "Business" if self.businessRadio.isChecked() else "Personal"
 
         customerData = {
@@ -155,7 +169,6 @@ class CustomerForm(QWidget):
             "ABN": self.abnInput.text().strip(),
         }
 
-        db = DbClient()
         response = db.addCustomerData(customerData)
 
         if response["status"] != "Success":

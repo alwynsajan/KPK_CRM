@@ -5,11 +5,14 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette, QColor
 from productForm import ProductForm
+from addNewCustomer import CustomerForm
+from mainArea import MainArea
 
 
 class SideBar(QWidget):
     def __init__(self, selectedCustomerDetails=None):
         super().__init__()
+        self.mainAreaObj = MainArea() 
         self.selectedCustomerDetails = selectedCustomerDetails or {}
 
         # Set background color
@@ -27,12 +30,15 @@ class SideBar(QWidget):
 
         # --- Vertical Buttons ---
         self.headerBtns = []
-        btnNames = [ "Add Product to DB", "Miscellanious", "Upload Pdt Details"]
+        btnNames = [ "Add Product to DB","Add new Customer", "Upload Pdt Details"]
         for name in btnNames:
             btn = QPushButton(name)
 
             if name == "Add Product to DB":
                 btn.clicked.connect(self.openProductForm)
+
+            if name == "Add new Customer":
+                btn.clicked.connect(self.openCustomerForm)
 
             btn.setStyleSheet("""
                 QPushButton {
@@ -95,7 +101,14 @@ class SideBar(QWidget):
         self.infoLabel.setWordWrap(True)
         self.scrollLayout.addWidget(self.infoLabel)
 
+    # ------------------- Open Product Form -------------------
     def openProductForm(self):
         self.productWindow = ProductForm()
         self.productWindow.show()
+
+    # ------------------- Open Customer Form -------------------
+    def openCustomerForm(self):
+         # Pass the dictionary and a callback to update the input
+        self.customerForm = CustomerForm(self.selectedCustomerDetails,self.mainAreaObj.updateCustomerInput)
+        self.customerForm.show()
 

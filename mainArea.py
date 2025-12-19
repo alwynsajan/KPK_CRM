@@ -6,7 +6,6 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from dbClient import DbClient
-from addNewCustomer import CustomerForm
 from customerSelectorDialog import CustomerSelectorDialog
 
 class MainArea(QWidget):
@@ -70,20 +69,17 @@ class MainArea(QWidget):
         customerBtnLayout.setAlignment(Qt.AlignLeft)
 
         self.selectCustomerBtn = QPushButton("Select Customer")
-        self.addCustomerBtn = QPushButton("Add Customer")
         self.clearCustomerBtn = QPushButton("Clear")
 
         self.selectCustomerBtn.setStyleSheet(primaryBtnStyle)
-        self.addCustomerBtn.setStyleSheet(primaryBtnStyle)
         self.clearCustomerBtn.setStyleSheet(failureBtnStyle)
 
-        for btn in [self.selectCustomerBtn, self.addCustomerBtn, self.clearCustomerBtn]:
+        for btn in [self.selectCustomerBtn, self.clearCustomerBtn]:
             btn.setFixedHeight(28)
             btn.setFixedWidth(140)
             btn.setCursor(Qt.PointingHandCursor)
 
         customerBtnLayout.addWidget(self.selectCustomerBtn)
-        customerBtnLayout.addWidget(self.addCustomerBtn)
         customerBtnLayout.addWidget(self.clearCustomerBtn)
         mainAreaLayout.addLayout(customerBtnLayout)
 
@@ -96,8 +92,6 @@ class MainArea(QWidget):
                                 )
 
         self.clearCustomerBtn.clicked.connect(self.clearCustomerData)
-
-        self.addCustomerBtn.clicked.connect(self.openCustomerForm)
 
         mainAreaLayout.addSpacing(20)
 
@@ -198,7 +192,34 @@ class MainArea(QWidget):
                                                 background-color: #f0f0f0;
                                                 font-weight: bold;
                                             }
-""")
+                                        /* --- Vertical Scrollbar --- */
+                                            QScrollBar:vertical {
+                                                background: transparent;
+                                                width: 10px;
+                                                margin: 0px;
+                                            }
+
+                                            QScrollBar::handle:vertical {
+                                                background: lightblue;
+                                                border-radius: 5px;
+                                                min-height: 30px;
+                                            }
+
+                                            QScrollBar::handle:vertical:hover {
+                                                background: #2E86C1;
+                                            }
+
+                                            QScrollBar::add-line:vertical,
+                                            QScrollBar::sub-line:vertical {
+                                                height: 0px;
+                                                background: none;
+                                            }
+
+                                            QScrollBar::add-page:vertical,
+                                            QScrollBar::sub-page:vertical {
+                                                background: none;
+                                            }
+                                        """)
 
         mainAreaLayout.addWidget(self.productTable)
 
@@ -345,12 +366,6 @@ class MainArea(QWidget):
             if btn:
                 btn.clicked.disconnect()
                 btn.clicked.connect(lambda _, r=i: self.deleteRow(r))
-
-    # ------------------- Open Customer Form -------------------
-    def openCustomerForm(self):
-         # Pass the dictionary and a callback to update the input
-        self.customerForm = CustomerForm(self.selectedCustomerDetails,self.updateCustomerInput)
-        self.customerForm.show()
 
     # ------------------- Update Customer Input -------------------
     def updateCustomerInput(self):

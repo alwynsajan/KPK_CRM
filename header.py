@@ -37,6 +37,8 @@ class Header(QWidget):
                     color: white;
                     padding: 8px 15px;
                     border-radius: 5px;
+                    font-weight: bold;
+                    font-size: 14px;
                 }
                 QPushButton:hover {
                     background-color: #2E86C1;

@@ -15,7 +15,7 @@ class ProductSelectorDialog(QDialog):
 
         self.setWindowTitle("Select Product")
 
-        # --- Window Size (25% x 50%) ---
+        # --- Window Size ---
         screen = self.screen().availableGeometry()
         self.resize(
             int(screen.width() * 0.5),

@@ -30,6 +30,7 @@ class MainArea(QWidget):
                 padding: 5px 15px;
                 border-radius: 5px;
                 font-size: 14px;
+                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: #2E86C1;
@@ -42,6 +43,7 @@ class MainArea(QWidget):
                                 padding: 5px 15px;
                                 border-radius: 5px;
                                 font-size: 14px;
+                                font-weight: bold;
                             }
                             QPushButton:hover {
                                 background-color: #27AE60;
@@ -55,6 +57,7 @@ class MainArea(QWidget):
                 padding: 5px 15px;
                 border-radius: 5px;
                 font-size: 14px;
+                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: #C0392B;
@@ -236,7 +239,7 @@ class MainArea(QWidget):
                                                 background: none;
                                             }
                                         """)
-
+        self.productTable.cellChanged.connect(self.updateTotalPrice)
         mainAreaLayout.addWidget(self.productTable)
 
         # Connect Add Product Button
@@ -274,6 +277,7 @@ class MainArea(QWidget):
                 QRadioButton {
                     font-size: 14px;
                     color: black;
+                    font-weight: bold;
                 }
                 QRadioButton::indicator {
                     width: 18px;
@@ -400,6 +404,38 @@ class MainArea(QWidget):
     def openProductSelector(self):
         dialog = ProductSelectorDialog(self, addProductRow=self.addProductRow)
         dialog.exec()
+
+    # ------------------- Update Total Price on Cell Change -------------------
+    def updateTotalPrice(self, row, column):
+        # Only update if Qty, Unit Price, or Discount columns are changed
+        if column not in [1, 2, 3]:  # Qty=1, Unit Price=2, Discount=3
+            return
+
+        try:
+            qty_item = self.productTable.item(row, 1)
+            price_item = self.productTable.item(row, 2)
+            discount_item = self.productTable.item(row, 3)
+
+            qty = float(qty_item.text()) if qty_item and qty_item.text() else 0
+            price = float(price_item.text()) if price_item and price_item.text() else 0
+            discount_percent = float(discount_item.text()) if discount_item and discount_item.text() else 0
+
+            total = (price * qty) * (1 - discount_percent / 100)
+
+            # Update the Total Price cell safely
+            total_item = self.productTable.item(row, 4)
+            if not total_item:
+                total_item = QTableWidgetItem()
+                self.productTable.setItem(row, 4, total_item)
+
+            # Block signals to avoid infinite recursion
+            self.productTable.blockSignals(True)
+            total_item.setText(f"{total:.2f}")
+            self.productTable.blockSignals(False)
+
+        except ValueError:
+            pass  # Ignore invalid inputs
+
 
 
 

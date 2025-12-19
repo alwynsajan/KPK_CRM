@@ -13,7 +13,12 @@ class CustomerForm(QWidget):
         self.callback = callback
 
         self.setWindowTitle("Add Customer")
-        self.setFixedWidth(400)
+        # --- Window Size ---
+        screen = self.screen().availableGeometry()
+        self.resize(
+            int(screen.width() * 0.5),
+            int(screen.height() * 0.5)
+        )
 
         # Parent background
         self.setStyleSheet("""
@@ -126,6 +131,8 @@ class CustomerForm(QWidget):
                 color: white;
                 padding: 8px 15px;
                 border-radius: 5px;
+                font-size: 14px;
+                font-weight: bold;
             }
             QPushButton:hover {
                 background-color: #2E86C1;

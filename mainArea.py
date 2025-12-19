@@ -248,6 +248,28 @@ class MainArea(QWidget):
                                                         "price": float(self.priceInput.text().strip() or 0),
                                                         "qty": float(self.qtyInput.text().strip() or 1)
                                                     }))
+        # ------------------- Total Amount Section -------------------
+        totalLayout = QHBoxLayout()
+
+        totalLayout.addStretch()  # push content to the right
+
+        self.totalAmountLabel = QLabel("Total Amount:")
+        self.totalAmountLabel.setStyleSheet(
+            "font-size:16px; font-weight:bold; color:black;"
+        )
+
+        self.totalAmountValue = QLabel("0.00")
+        self.totalAmountValue.setStyleSheet(
+            "font-size:18px; font-weight:bold; color:#2E86C1;"
+        )
+        self.totalAmountValue.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        totalLayout.addWidget(self.totalAmountLabel)
+        totalLayout.addSpacing(10)
+        totalLayout.addWidget(self.totalAmountValue)
+
+        mainAreaLayout.addLayout(totalLayout)
+
 
         # ------------------- Notes Section -------------------
         self.notesInput = QLineEdit()
@@ -394,6 +416,8 @@ class MainArea(QWidget):
                 btn.clicked.disconnect()
                 btn.clicked.connect(lambda _, r=i: self.deleteRow(r))
 
+        self.updateGrandTotal()
+
     # ------------------- Update Customer Input -------------------
     def updateCustomerInput(self):
         # Update the input field with saved customer name
@@ -433,8 +457,24 @@ class MainArea(QWidget):
             total_item.setText(f"{total:.2f}")
             self.productTable.blockSignals(False)
 
+            self.updateGrandTotal()
+
+
         except ValueError:
             pass  # Ignore invalid inputs
+
+    def updateGrandTotal(self):
+        total = 0.0
+        for row in range(self.productTable.rowCount()):
+            item = self.productTable.item(row, 4)  # Total Price column
+            if item and item.text():
+                try:
+                    total += float(item.text())
+                except ValueError:
+                    pass
+
+        self.totalAmountValue.setText(f"{total:.2f}")
+
 
 
 

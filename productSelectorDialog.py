@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QListWidget, QPushButton,
-    QLineEdit, QLabel, QWidget, QHBoxLayout, QListWidgetItem, QSizePolicy
+    QLineEdit, QLabel, QWidget, QHBoxLayout, QListWidgetItem, QSizePolicy,QMessageBox
 )
 from PySide6.QtCore import Qt
 from dbClient import DbClient
@@ -212,3 +212,22 @@ class ProductSelectorDialog(QDialog):
             self.addProductRow(productData)
 
         self.accept()
+
+# Utility function to open the dialog
+def openProductSelector(parent=None, addProductRow=None):
+    db = DbClient()
+    products = db.getAllProducts()
+
+    if not products:
+        QMessageBox.warning(
+            parent,
+            "No Products",
+            "No products found in the database.\nPlease add products first."
+        )
+        return
+
+    dialog = ProductSelectorDialog(
+        parent=parent,
+        addProductRow=addProductRow
+    )
+    dialog.exec()

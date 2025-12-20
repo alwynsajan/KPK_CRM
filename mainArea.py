@@ -6,9 +6,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from dbClient import DbClient
-from customerSelectorDialog import CustomerSelectorDialog
-from productSelectorDialog import ProductSelectorDialog
-
+from customerSelectorDialog import openCustomerSelector
+from productSelectorDialog import openProductSelector
 class MainArea(QWidget):
     def __init__(self, selectedCustomerDetails=None, finalProductList=None, sidebar=None):
         super().__init__()
@@ -100,12 +99,13 @@ class MainArea(QWidget):
         mainAreaLayout.addLayout(customerBtnLayout)
 
         self.selectCustomerBtn.clicked.connect(
-                                    lambda: CustomerSelectorDialog(
-                                        parent=self,
-                                        customerInput=self.customerInput,
-                                        selectedCustomerDetails=self.selectedCustomerDetails
-                                    ).exec()
+                                lambda: openCustomerSelector(
+                                    parent=self,
+                                    customerInput=self.customerInput,
+                                    selectedCustomerDetails=self.selectedCustomerDetails
                                 )
+                            )
+
 
         self.clearCustomerBtn.clicked.connect(self.clearCustomerData)
 
@@ -185,8 +185,12 @@ class MainArea(QWidget):
         self.clearProductBtn.clicked.connect(self.clearProductFields)
 
         # Connect the Select Product button
-        self.selectProductBtn.clicked.connect(self.openProductSelector)
-
+        self.selectProductBtn.clicked.connect(
+                                    lambda: openProductSelector(
+                                        parent=self,
+                                        addProductRow=self.addProductRow
+                                    )
+                                )
         mainAreaLayout.addSpacing(20)
 
         # ------------------- Product Table -------------------
@@ -423,11 +427,6 @@ class MainArea(QWidget):
         # Update the input field with saved customer name
         if "name" in self.selectedCustomerDetails:
             self.customerInput.setText(self.selectedCustomerDetails["name"])
-
-    # ------------------- Open Product Selector -------------------
-    def openProductSelector(self):
-        dialog = ProductSelectorDialog(self, addProductRow=self.addProductRow)
-        dialog.exec()
 
     # ------------------- Update Total Price on Cell Change -------------------
     def updateTotalPrice(self, row, column):

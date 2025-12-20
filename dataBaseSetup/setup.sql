@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS sales (
     saleDate DATE NOT NULL,
     customerID INT,
     paymentType VARCHAR(50) NOT NULL,
+    note TEXT,
 
     FOREIGN KEY (customerID)
         REFERENCES customerData(customerID)

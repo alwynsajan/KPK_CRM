@@ -27,7 +27,7 @@ class Header(QWidget):
         buttonLayout = QHBoxLayout()
         buttonLayout.setSpacing(10)
 
-        btnNames = ["Sales", "Credits","Stocks"]
+        btnNames = ["Sales", "Credits"]
         self.headerBtns = []
         for name in btnNames:
             btn = QPushButton(name)

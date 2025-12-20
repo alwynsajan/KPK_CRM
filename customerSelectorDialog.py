@@ -135,6 +135,7 @@ class CustomerSelectorDialog(QDialog):
 
         if not self.customerData:
             QMessageBox.warning(self, "No Customers", "No customers found in database.")
+
             return
 
         self.populateCustomerList(self.customerData)
@@ -188,3 +189,27 @@ class CustomerSelectorDialog(QDialog):
             })
 
         self.accept()
+
+# Utility function to open the dialog
+def openCustomerSelector(parent, customerInput, selectedCustomerDetails):
+    """
+    Called from MainArea.
+    Checks DB first, opens dialog only if customers exist.
+    """
+    db = DbClient()
+    customers = db.getCustomerName()
+
+    if not customers:
+        QMessageBox.warning(
+            parent,
+            "No Customers",
+            "No customers found in database."
+        )
+        return 
+
+    dialog = CustomerSelectorDialog(
+        parent=parent,
+        customerInput=customerInput,
+        selectedCustomerDetails=selectedCustomerDetails
+    )
+    dialog.exec()

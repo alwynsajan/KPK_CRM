@@ -156,48 +156,6 @@ class DbClient:
 
         return products
 
-
-    def addPerDaySale(self, saleData):
-        """Add or update per-day sales data in the PerdaySale table"""
-        # Fetch current sales value for the given date
-        queryFetch = "SELECT sales FROM PerdaySale WHERE date = %s"
-        try:
-            conn = self.connectToDB()
-            cursor = conn.cursor()
-            cursor.execute(queryFetch, (saleData['date'],))
-            result = cursor.fetchone()
-            
-            if result:
-                # If there's an existing record, add the current sales to the existing sales
-                currentSales = result[0]
-                updatedSales = float(currentSales) + float(saleData['sales'])
-                queryUpdate = "UPDATE PerdaySale SET sales = %s WHERE date = %s"
-                cursor.execute(queryUpdate, (updatedSales, saleData['date']))
-                conn.commit()
-                response = {
-                    "status": "Success",
-                    "message": f"Sales updated for {saleData['date']}."
-                }
-            else:
-                # If no record exists, insert a new record
-                queryInsert = "INSERT INTO PerdaySale (date, sales) VALUES (%s, %s)"
-                cursor.execute(queryInsert, (saleData['date'], saleData['sales']))
-                conn.commit()
-                response = {
-                    "status": "Success",
-                    "message": f"New sales record added for {saleData['date']}."
-                }
-        except mysql.connector.Error as err:
-            response = {
-                "status": "Failed",
-                "message": f"Error: {err}"
-            }
-            conn.rollback()
-        finally:
-            cursor.close()
-            conn.close()
-        
-        return response
     
     def getPerDaySalesData(self):
         """Retrieve total sales grouped by date from the database."""
@@ -219,25 +177,93 @@ class DbClient:
         return results
     
 
-    def addSalesData(self, salesData):
-        """Add sales transaction data to the salesData table"""
-        query = """
-        INSERT INTO salesData (date, customerID, customerName, customerAddress, customerPhone, productName, productType, colour, price, quantity, paymentType)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    def addSaleWithItems(self, saleData):
         """
-        return self.executeQuery(query, (
-            salesData['date'],
-            salesData['customerID'],
-            salesData['customerName'],
-            salesData['customerAddress'],
-            salesData['customerPhone'],
-            salesData['productName'],
-            salesData['productType'],
-            salesData['colour'],
-            salesData['price'],
-            salesData['quantity'],
-            salesData['paymentType']
-        ))
+        Add a sale with its items to the database.
+        saleData: {
+            "saleDate": date,
+            "customerID": str or None,
+            "paymentType": str,
+            "note": str,
+            "items": [
+                {"name": str, "price": float, "quantity": int, "discount": float}
+            ]
+        }
+        """
+        response = {"status": "Failed", "message": "Unknown error"}
+
+        if not saleData.get("items") or not saleData.get("paymentType"):
+            response["message"] = "No products or payment type selected."
+            return response
+
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor()
+
+            # ------------------ Insert Sale ------------------
+            customerID = saleData.get("customerID")
+            if not customerID:
+                customerID = None  # store NULL if no customer selected
+
+            saleQuery = """
+                INSERT INTO sales (saleDate, customerID, paymentType, note)
+                VALUES (%s, %s, %s, %s)
+            """
+            cursor.execute(saleQuery, (
+                saleData["saleDate"],
+                customerID,
+                saleData["paymentType"],
+                saleData.get("note")
+            ))
+
+            saleID = cursor.lastrowid  # get the auto-increment saleID
+
+            # ------------------ Insert Sale Items ------------------
+            itemQuery = """
+                INSERT INTO saleItems (saleID, productName, cost, quantity)
+                VALUES (%s, %s, %s, %s)
+            """
+            for item in saleData["items"]:
+                # calculate final cost after discount
+                price = float(item.get("price", 0))
+                discount = float(item.get("discount", 0))
+                cost = price * (1 - discount / 100)
+
+                cursor.execute(itemQuery, (
+                    saleID,
+                    item["name"],
+                    cost,
+                    int(item.get("quantity", 1))
+                ))
+
+            # ------------------ Update Per-Day Sales ------------------
+            totalSaleAmount = sum(
+                float(item.get("price", 0)) * int(item.get("quantity", 1)) * (1 - float(item.get("discount", 0)) / 100)
+                for item in saleData["items"]
+            )
+
+            # Check if record exists
+            cursor.execute("SELECT totalSales FROM perDaySale WHERE saleDate = %s", (saleData["saleDate"],))
+            result = cursor.fetchone()
+            if result:
+                updatedTotal = float(result[0]) + totalSaleAmount
+                cursor.execute("UPDATE perDaySale SET totalSales = %s WHERE saleDate = %s", (updatedTotal, saleData["saleDate"]))
+            else:
+                cursor.execute("INSERT INTO perDaySale (saleDate, totalSales) VALUES (%s, %s)", (saleData["saleDate"], totalSaleAmount))
+
+            conn.commit()
+            response = {"status": "Success", "message": f"Sale saved successfully with Sale ID {saleID}"}
+
+        except mysql.connector.Error as err:
+            conn.rollback()
+            response = {"status": "Failed", "message": f"Database error: {err}"}
+
+        finally:
+            cursor.close()
+            conn.close()
+
+        return response
+
     
     def getSalesByCustomerName(self, customerName):
         """Retrieve all sales records for a given customer name."""

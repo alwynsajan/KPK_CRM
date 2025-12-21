@@ -50,16 +50,13 @@ CREATE TABLE IF NOT EXISTS sales (
 CREATE TABLE IF NOT EXISTS saleItems (
     saleItemID INT AUTO_INCREMENT PRIMARY KEY,
     saleID INT NOT NULL,
-    productID INT NOT NULL,
+    productName VARCHAR(255) NOT NULL,
     cost DECIMAL(10,2) NOT NULL,
     quantity INT NOT NULL,
 
     FOREIGN KEY (saleID)
         REFERENCES sales(saleID)
-        ON DELETE CASCADE,
-
-    FOREIGN KEY (productID)
-        REFERENCES productData(productID)
+        ON DELETE CASCADE
 );
 
 -- ===============================

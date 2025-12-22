@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt
 from dbClient import DbClient
 from customerSelectorDialog import openCustomerSelector
 from productSelectorDialog import openProductSelector
+from generatePDF import generateInvoice
 from datetime import date
 
 class MainArea(QWidget):
@@ -344,23 +345,29 @@ class MainArea(QWidget):
 
         self.saveSalesBtn = QPushButton("Save Sales")
         self.printInvoiceBtn = QPushButton("Print Invoive")
+        self.voidSaleBtn = QPushButton("Void Sale")
 
         self.saveSalesBtn.setStyleSheet(successBtnStyle)
         self.printInvoiceBtn.setStyleSheet(primaryBtnStyle)
+        self.voidSaleBtn.setStyleSheet(failureBtnStyle)
 
-        for btn in [self.saveSalesBtn, self.printInvoiceBtn]:
+        for btn in [self.saveSalesBtn, self.printInvoiceBtn, self.voidSaleBtn]:
             btn.setFixedHeight(30)
             btn.setFixedWidth(150)
 
         self.saveSalesBtn.clicked.connect(self.handleSaveSales)
-
+        self.printInvoiceBtn.clicked.connect(self.handlePrintInvoice)
+        self.voidSaleBtn.clicked.connect(self.handleVoidSale)
 
         actionBtnLayout.addWidget(self.saveSalesBtn)
         actionBtnLayout.addWidget(self.printInvoiceBtn)
+        actionBtnLayout.addWidget(self.voidSaleBtn)
 
         mainAreaLayout.addLayout(actionBtnLayout)
         self.saveSalesBtn.setCursor(Qt.PointingHandCursor)
         self.printInvoiceBtn.setCursor(Qt.PointingHandCursor)
+        self.voidSaleBtn.setCursor(Qt.PointingHandCursor)
+
 
         self.setLayout(mainAreaLayout)
 
@@ -377,10 +384,9 @@ class MainArea(QWidget):
 
     # ------------------- Add Product Logic -------------------
     def addProductRow(self, productData):
-
         name = productData.get("name", "").strip()
         priceValue = productData.get("price", 0)
-        qtyValue = productData.get("qty", 1)  # default 1 if not provided
+        qtyValue = productData.get("qty", 1)  # default 1
 
         if not name or not priceValue:
             return
@@ -389,6 +395,7 @@ class MainArea(QWidget):
             qtyValue = float(qtyValue)
             priceValue = float(priceValue)
         except ValueError:
+            QMessageBox.warning(self, "Invalid Input", "Quantity and price must be numbers.")
             return
 
         total = qtyValue * priceValue
@@ -396,12 +403,24 @@ class MainArea(QWidget):
         row = self.productTable.rowCount()
         self.productTable.insertRow(row)
 
+        # Product Name 
         self.productTable.setItem(row, 0, QTableWidgetItem(name))
-        self.productTable.setItem(row, 1, QTableWidgetItem(str(qtyValue)))
-        self.productTable.setItem(row, 2, QTableWidgetItem(str(priceValue)))
-        self.productTable.setItem(row, 3, QTableWidgetItem("0"))  # discount or other field
-        self.productTable.setItem(row, 4, QTableWidgetItem(str(total)))
 
+        # Qty 
+        self.productTable.setItem(row, 1, QTableWidgetItem(str(qtyValue)))
+
+        # Unit Price 
+        self.productTable.setItem(row, 2, QTableWidgetItem(f"{priceValue:.2f}"))
+
+        # Discount 
+        self.productTable.setItem(row, 3, QTableWidgetItem("0"))
+
+        # Total Price (NON-EDITABLE)
+        totalItem = QTableWidgetItem(f"{total:.2f}")
+        totalItem.setFlags(totalItem.flags() & ~Qt.ItemIsEditable)
+        self.productTable.setItem(row, 4, totalItem)
+
+        # Delete Button 
         deleteBtn = QPushButton("Delete")
         deleteBtn.setStyleSheet("""
             QPushButton {
@@ -414,9 +433,16 @@ class MainArea(QWidget):
                 background-color: #C0392B;
             }
         """)
-        deleteBtn.clicked.connect(lambda _, r=row: self.deleteRow(r))
-        self.productTable.setCellWidget(row, 5, deleteBtn)
+        deleteBtn.setCursor(Qt.PointingHandCursor)
 
+        # IMPORTANT: get row dynamically (prevents wrong deletions)
+        deleteBtn.clicked.connect(
+            lambda _, btn=deleteBtn: self.deleteRow(
+                self.productTable.indexAt(btn.pos()).row()
+            )
+        )
+
+        self.productTable.setCellWidget(row, 5, deleteBtn)
 
     # ------------------- Delete Row -------------------
     def deleteRow(self, row):
@@ -481,11 +507,53 @@ class MainArea(QWidget):
                     pass
 
         self.totalAmountValue.setText(f"{total:.2f}")
+        print("Updated Grand Total:", total)
 
+    # ------------------- Handle Void Sale -------------------
+    def handleVoidSale(self):
+        # reply = QMessageBox.question(
+        #     self,
+        #     "Void Sale",
+        #     "Are you sure you want to void this sale?\nAll data will be cleared.",
+        #     QMessageBox.Yes | QMessageBox.No,
+        #     QMessageBox.No
+        # )
+
+        # if reply != QMessageBox.Yes:
+        #     return
+
+        #  Clear Customer 
+        self.customerInput.clear()
+        self.selectedCustomerDetails.clear()
+
+        #  Clear Product Inputs 
+        self.productNameInput.clear()
+        self.qtyInput.clear()
+        self.priceInput.clear()
+
+        #  Clear Product Table 
+        self.productTable.blockSignals(True)
+        self.productTable.setRowCount(0)
+        self.productTable.blockSignals(False)
+
+        #  Reset Total 
+        self.totalAmountValue.setText("0.00")
+
+        #  Clear Notes 
+        self.notesInput.clear()
+
+        #  Reset Payment Type 
+        self.paymentGroup.setExclusive(False)
+        for btn in self.paymentGroup.buttons():
+            btn.setChecked(False)
+        self.paymentGroup.setExclusive(True)
+
+        #  Clear Internal Product List 
+        self.finalProductList = []
 
     # ------------------- Handle Save Sales -------------------
-    def handleSaveSales(self):
-        # ------------------ Customer Check ------------------
+    def handleSaveSales(self,type=None):
+        #  Customer Check 
         customerName = self.customerInput.text().strip()
 
         # If no selected customer details, try using input field
@@ -497,10 +565,9 @@ class MainArea(QWidget):
             else:
                 self.selectedCustomerDetails = {}
 
-        print("Customer Details:", self.selectedCustomerDetails)
+        print("Customer Details in save sales:", self.selectedCustomerDetails)
 
-        # ------------------ Product Table Data ------------------
-        finalProductList = []
+        #  Product Table Data 
 
         for row in range(self.productTable.rowCount()):
             nameItem = self.productTable.item(row, 0)
@@ -508,38 +575,38 @@ class MainArea(QWidget):
             priceItem = self.productTable.item(row, 2)
             discountItem = self.productTable.item(row, 3)
 
-            # ---------------- Validate Quantity ----------------
+            #  Validate Quantity 
             try:
                 quantity = int(float(qtyItem.text())) if qtyItem and qtyItem.text() else 0
             except ValueError:
                 QMessageBox.warning(
                     self,
                     "Invalid Quantity",
-                    f"Invalid quantity on row {row+1}. Please enter a valid integer."
+                    f"Invalid quantity on row {row+1}. Please enter a valid Number."
                 )
-                return
+                return -1
 
-            # ---------------- Validate Price ----------------
+            #  Validate Price 
             try:
                 price = float(priceItem.text()) if priceItem and priceItem.text() else 0.0
             except ValueError:
                 QMessageBox.warning(
                     self,
                     "Invalid Price",
-                    f"Invalid unit price on row {row+1}. Please enter a valid number."
+                    f"Invalid unit price on row {row+1}. Please enter a valid Number."
                 )
-                return
+                return -1
 
-            # ---------------- Validate Discount ----------------
+            #  Validate Discount 
             try:
                 discount = float(discountItem.text()) if discountItem and discountItem.text() else 0.0
             except ValueError:
                 QMessageBox.warning(
                     self,
                     "Invalid Discount",
-                    f"Invalid discount on row {row+1}. Please enter a valid number."
+                    f"Invalid discount on row {row+1}. Please enter a valid Number."
                 )
-                return
+                return -1
 
             productData = {
                 "name": nameItem.text().strip(),
@@ -548,46 +615,52 @@ class MainArea(QWidget):
                 "discount": discount
             }
 
-            finalProductList.append(productData)
+            self.finalProductList.append(productData)
 
-        # ------------------ Print Result ------------------
-        print("\nFinal Product List:",finalProductList)
+        #  Print Result 
+        print("\nFinal Product List:",self.finalProductList)
 
-        # ------------------ Validate Products ------------------
-        if not finalProductList:
-            QMessageBox.warning(self, "No Products", "Please add at least one product before saving.")
-            return
+        #  Validate Products 
+        if not self.finalProductList:
+            QMessageBox.warning(self, "No Products", "Please add at least one product before proceding.")
+            return -1
 
-        # ------------------ Validate Payment ------------------
+        #  Validate Payment 
         checkedButton = self.paymentGroup.checkedButton()
         if not checkedButton:
-            QMessageBox.warning(self, "Payment Type Required", "Please select a payment type before saving.")
-            return
+            QMessageBox.warning(self, "Payment Type Required", "Please select a payment type before proceding.")
+            return -1
 
         saleData = {
         "saleDate": date.today(),
         "customerID": self.selectedCustomerDetails.get("customerID"),
         "paymentType": checkedButton.text(),
         "note": self.notesInput.text().strip(),
-        "items": finalProductList  # list of dicts
+        "items": self.finalProductList  # list of dicts
                                             }
 
         response = self.dbClent.addSaleWithItems(saleData)
         print(response)
 
-        # ------------------ Popup Result ------------------
+        #  Popup Result
         if response.get("status") == "Success":
-            QMessageBox.information(
-                self,
-                "Sale Saved",
-                f"Sale saved successfully!"
-            )
+            if type!="invoice":
+                QMessageBox.information(
+                    self,
+                    "Sale Saved",
+                    f"Sale saved successfully!"
+                )
 
-            # Optional: clear UI after save
-            self.productTable.setRowCount(0)
-            self.notesInput.clear()
-            self.customerInput.clear()
-            self.selectedCustomerDetails.clear()
+            # Clear UI after save
+            if type!="invoice":
+                
+                self.productTable.setRowCount(0)
+                self.notesInput.clear()
+                self.customerInput.clear()
+                self.selectedCustomerDetails.clear()
+                self.totalAmountValue.setText("0.00")
+                self.finalProductList = []
+            return 1
 
         else:
             QMessageBox.critical(
@@ -595,6 +668,66 @@ class MainArea(QWidget):
                 "Save Failed",
                 f"Failed to save sale.\n\n{response.get('error')}"
             )
+            return -1
+
+    # ------------------- Handle Print Invoice -------------------
+    def handlePrintInvoice(self):
+        #  Save Sale First 
+        status = self.handleSaveSales("invoice")
+
+        if status != 1:
+            self.finalProductList = []
+            return
+
+        # #  Convert Customer Data 
+        # cust = self.selectedCustomerDetails or {}
+
+        # print("Selected Customer Details for PDF:", cust)
+
+        customerData = {
+            "Name": self.selectedCustomerDetails.get("name", ""),
+            "Address": self.selectedCustomerDetails.get("address", ""),
+            "State": self.selectedCustomerDetails.get("state", ""),
+            "Postcode": self.selectedCustomerDetails.get("postcode", ""),
+            "Phone": self.selectedCustomerDetails.get("phone", "")
+        }
+        print("Customer Data for PDF:", customerData)
+
+        #  Convert Product Data 
+        productDataForPDF = []
+
+        for item in self.finalProductList:
+            price = float(item.get("price", 0))
+            discount = float(item.get("discount", 0))
+            quantity = int(item.get("quantity", 0))
+
+            # Apply discount here
+            discountedPrice = round(
+                price - (price * discount / 100), 2
+            )
+
+            productDataForPDF.append({
+                "Name": item.get("name", ""),
+                "Quantity": quantity,
+                "Price": discountedPrice
+            })
+
+        # ------------------ Generate Invoice ------------------
+        pdfPath = generateInvoice(
+            customerData=customerData,
+            productData=productDataForPDF
+        )
+
+        QMessageBox.information(
+            self,
+            "Invoice Generated",
+            f"Invoice generated successfully at:\n{pdfPath}"
+        )
+
+        #  Clear Internal Product List
+        self.handleVoidSale()
+
+
 
 
 

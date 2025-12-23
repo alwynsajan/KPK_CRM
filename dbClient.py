@@ -321,4 +321,20 @@ class DbClient:
             cursor.close()
             conn.close()
 
+    # ------------------- Get Customer Sales History -------------------
+    def getCustomerSalesHistory(self, customerID):
+        query = """
+            SELECT s.saleDate, si.productName, si.quantity, si.cost
+            FROM sales s
+            JOIN saleItems si ON s.saleID = si.saleID
+            WHERE s.customerID = %s
+            ORDER BY s.saleDate DESC
+        """
+        conn = self.connectToDB()
+        cursor = conn.cursor()
+        cursor.execute(query, (customerID,))
+        return cursor.fetchall()
+
+
+
 

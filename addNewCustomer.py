@@ -1,18 +1,22 @@
+# addNewCustomer.py
+
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QRadioButton, QMessageBox
 )
+from PySide6.QtCore import Signal
 from dbClient import DbClient
 
 
 class CustomerForm(QWidget):
-    def __init__(self, selectedCustomerDetails, callback):
+    # ------------------- Signal -------------------
+    customerAdded = Signal(dict)   # Emits newly added customer details
+
+    def __init__(self):
         super().__init__()
 
-        self.selectedCustomerDetails = selectedCustomerDetails
-        self.callback = callback
-
         self.setWindowTitle("Add Customer")
+
         # --- Window Size ---
         screen = self.screen().availableGeometry()
         self.resize(
@@ -29,7 +33,7 @@ class CustomerForm(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(10)
 
-        # Common input style
+        # ------------------- Input Style -------------------
         inputStyle = """
             QLineEdit {
                 background-color: #FFFFFF;
@@ -56,7 +60,6 @@ class CustomerForm(QWidget):
         self.personalRadio = QRadioButton("Personal")
         self.personalRadio.setChecked(True)
 
-        # Radio button style
         radioStyle = """
             QRadioButton {
                 font-size: 14px;
@@ -66,11 +69,11 @@ class CustomerForm(QWidget):
                 width: 18px;
                 height: 18px;
                 border-radius: 9px;
-                background-color: #cccccc;  /* default grey */
+                background-color: #cccccc;
                 border: 1px solid #999999;
             }
             QRadioButton::indicator:checked {
-                background-color: #3498DB;  /* blue when selected */
+                background-color: #3498DB;
                 border: 1px solid #2980B9;
             }
         """
@@ -143,6 +146,7 @@ class CustomerForm(QWidget):
 
         self.setLayout(layout)
 
+    # ------------------- Save Customer -------------------
     def saveCustomer(self):
         name = self.nameInput.text().strip()
         if not name:
@@ -152,7 +156,7 @@ class CustomerForm(QWidget):
         db = DbClient()
 
         # ---- Duplicate name check ----
-        existingCustomers = db.getCustomerName()  # [(id, name), ...]
+        existingCustomers = db.getCustomerName()  # [(id, name)]
         existingNames = [custName.lower() for _, custName in existingCustomers]
 
         if name.lower() in existingNames:
@@ -182,14 +186,7 @@ class CustomerForm(QWidget):
             QMessageBox.critical(self, "Database Error", response["message"])
             return
 
-        # Update selected customer
-        self.selectedCustomerDetails.clear()
-        self.selectedCustomerDetails.update({
-            "name": name,
-            "address": customerData["address"],
-            "phone": customerData["phone"]
-        })
+        # -------- Emit signal with full customer data --------
+        self.customerAdded.emit(customerData)
 
-        # Refresh main UI
-        self.callback()
         self.close()

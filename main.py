@@ -6,50 +6,68 @@ from header import Header
 from mainArea import MainArea
 from PySide6.QtCore import Qt
 
+
 class CRMWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("CRM App")
         self.setStyleSheet("""
-            background-color: #EBE8DB;  /* background */
-            color: black;               /* default text color */
+            background-color: #EBE8DB;
+            color: black;
         """)
 
-        # ------------------- Internal State Variables -------------------
-        self.selectedCustomerDetails = {} 
+        # ------------------- Shared State -------------------
+        self.selectedCustomerDetails = {}
         self.finalProductList = []
 
-        # Make the window maximized by default
         self.setWindowState(Qt.WindowMaximized)
 
-        # --- Main Layout ---
-        mainLayout = QVBoxLayout()
-        mainLayout.setContentsMargins(0,0,0,0)
+        # ------------------- Layout -------------------
+        mainLayout = QVBoxLayout(self)
+        mainLayout.setContentsMargins(0, 0, 0, 0)
         mainLayout.setSpacing(0)
-        self.setLayout(mainLayout)
 
         # Header
         self.header = Header()
         mainLayout.addWidget(self.header)
 
-        # Main horizontal area
+        # Horizontal content
         mainContentLayout = QHBoxLayout()
-        mainContentLayout.setContentsMargins(0,0,0,0)
-        mainContentLayout.setSpacing(0)
         mainLayout.addLayout(mainContentLayout)
 
         # Sidebar
-        self.sideBar = SideBar(selectedCustomerDetails=self.selectedCustomerDetails)
-        mainContentLayout.addWidget(self.sideBar, stretch=1) 
+        self.sideBar = SideBar(
+            selectedCustomerDetails=self.selectedCustomerDetails
+        )
+        mainContentLayout.addWidget(self.sideBar, stretch=1)
 
-        # Main area
+        # Main Area
         self.mainArea = MainArea(
             selectedCustomerDetails=self.selectedCustomerDetails,
             finalProductList=self.finalProductList,
-            sidebar=self.sideBar 
-        ) 
-        mainContentLayout.addWidget(self.mainArea, stretch=6)
-        
+            sidebar=self.sideBar
+        )
+        mainContentLayout.addWidget(self.mainArea, stretch=5)
+
+        # IMPORTANT: signal wiring happens HERE
+        self.sideBar.customerAdded.connect(self.handleCustomerAdded)
+
+    # ------------------- Signal Handler -------------------
+    def handleCustomerAdded(self, customerData):
+        print(self.selectedCustomerDetails )
+        """
+        Called when a new customer is added from sidebar form
+        """
+
+        # Update shared state
+        self.selectedCustomerDetails.clear()
+        self.selectedCustomerDetails.update(customerData)
+
+        # Update MainArea input field
+        self.mainArea.updateCustomerInput()
+
+        # Refresh sidebar UI
+        self.sideBar.updateCustomerInfo()
 
 
 if __name__ == "__main__":

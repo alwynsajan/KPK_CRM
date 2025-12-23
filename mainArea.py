@@ -17,9 +17,12 @@ class MainArea(QWidget):
 
         self.dbClent= DbClient()
 
-        self.selectedCustomerDetails = selectedCustomerDetails or {}
+        if selectedCustomerDetails is None:
+            self.selectedCustomerDetails = {}
+        else:
+            self.selectedCustomerDetails = selectedCustomerDetails
         self.finalProductList = finalProductList or []
-        self.sidebar = sidebar  # reference to sidebar to update it dynamically
+        self.sideBar = sidebar  # reference to sidebar to update it dynamically
 
         mainAreaLayout = QVBoxLayout()
         mainAreaLayout.setAlignment(Qt.AlignTop)
@@ -107,7 +110,8 @@ class MainArea(QWidget):
                                 lambda: openCustomerSelector(
                                     parent=self,
                                     customerInput=self.customerInput,
-                                    selectedCustomerDetails=self.selectedCustomerDetails
+                                    selectedCustomerDetails=self.selectedCustomerDetails,
+                                    refreshCustomerSidebar=self.refreshCustomerSidebar
                                 )
                             )
 
@@ -373,8 +377,9 @@ class MainArea(QWidget):
 
     # ------------------- Clear Customer Data -------------------
     def clearCustomerData(self):
-        self.selectedCustomerDetails = {}
+        self.selectedCustomerDetails.clear()
         self.customerInput.clear()
+        self.sideBar.updateCustomerInfo()
 
     # ------------------- Clear Product Fields -------------------
     def clearProductFields(self):
@@ -459,6 +464,7 @@ class MainArea(QWidget):
 
     # ------------------- Update Customer Input -------------------
     def updateCustomerInput(self):
+        print("Updating customer input field...", self.selectedCustomerDetails)
         # Update the input field with saved customer name
         if "name" in self.selectedCustomerDetails:
             self.customerInput.setText(self.selectedCustomerDetails["name"])
@@ -550,6 +556,10 @@ class MainArea(QWidget):
 
         #  Clear Internal Product List 
         self.finalProductList = []
+
+        # IMPORTANT: refresh sidebar
+        self.sideBar.updateCustomerInfo()
+
 
     # ------------------- Handle Save Sales -------------------
     def handleSaveSales(self,type=None):
@@ -721,11 +731,15 @@ class MainArea(QWidget):
         QMessageBox.information(
             self,
             "Invoice Generated",
-            f"Invoice generated successfully at:\n{pdfPath}"
+            "Invoice generated successfully"
         )
 
         #  Clear Internal Product List
         self.handleVoidSale()
+
+    # ------------------- Refresh Customer Sidebar -------------------
+    def refreshCustomerSidebar(self):
+        self.sideBar.updateCustomerInfo()
 
 
 

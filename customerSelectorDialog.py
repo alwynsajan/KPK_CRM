@@ -7,10 +7,11 @@ from dbClient import DbClient
 
 
 class CustomerSelectorDialog(QDialog):
-    def __init__(self, parent=None, customerInput=None, selectedCustomerDetails=None):
+    def __init__(self, parent=None, customerInput=None, selectedCustomerDetails=None,refreshCustomerSidebar=None):
         super().__init__(parent)
 
         self.setWindowTitle("Select Customer")
+        self.refreshCustomerSidebar=refreshCustomerSidebar
 
         # Set dialog size (25% width, 50% height of screen)
         screen = self.screen().availableGeometry()
@@ -188,10 +189,12 @@ class CustomerSelectorDialog(QDialog):
                 "phone": customerPhone
             })
 
+        # Refresh SideBar in parent window
+        self.refreshCustomerSidebar()
         self.accept()
 
 # Utility function to open the dialog
-def openCustomerSelector(parent, customerInput, selectedCustomerDetails):
+def openCustomerSelector(parent, customerInput, selectedCustomerDetails,refreshCustomerSidebar):
     """
     Called from MainArea.
     Checks DB first, opens dialog only if customers exist.
@@ -210,6 +213,7 @@ def openCustomerSelector(parent, customerInput, selectedCustomerDetails):
     dialog = CustomerSelectorDialog(
         parent=parent,
         customerInput=customerInput,
-        selectedCustomerDetails=selectedCustomerDetails
+        selectedCustomerDetails=selectedCustomerDetails,
+        refreshCustomerSidebar=refreshCustomerSidebar
     )
     dialog.exec()

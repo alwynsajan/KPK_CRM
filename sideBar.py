@@ -78,6 +78,14 @@ class SideBar(QWidget):
 
     # ---------------- Customer Info ----------------
     def updateCustomerInfo(self):
+
+        # Remove any existing widgets (customer info or sales history)
+        while self.scrollLayout.count():
+            item = self.scrollLayout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
         # ---------- Clear existing widgets ----------
         for i in reversed(range(self.scrollLayout.count())):
             widget = self.scrollLayout.itemAt(i).widget()
@@ -86,12 +94,6 @@ class SideBar(QWidget):
 
         # ---------- No customer ----------
         if not self.selectedCustomerDetails:
-            # Remove any existing widgets (customer info or sales history)
-            while self.scrollLayout.count():
-                item = self.scrollLayout.takeAt(0)
-                widget = item.widget()
-                if widget:
-                    widget.deleteLater()
 
             # Add the "Select customer" label
             label = QLabel("Select customer to see Sales History")

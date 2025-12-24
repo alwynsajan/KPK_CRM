@@ -78,7 +78,7 @@ class SideBar(QWidget):
 
     # ---------------- Customer Info ----------------
     def updateCustomerInfo(self):
-        # Clear existing widgets
+        # ---------- Clear existing widgets ----------
         for i in reversed(range(self.scrollLayout.count())):
             widget = self.scrollLayout.itemAt(i).widget()
             if widget:
@@ -86,15 +86,23 @@ class SideBar(QWidget):
 
         # ---------- No customer ----------
         if not self.selectedCustomerDetails:
-            container = QWidget()
-            containerLayout = QVBoxLayout(container)
-            containerLayout.setContentsMargins(0, 0, 0, 0)
+            # Remove any existing widgets (customer info or sales history)
+            while self.scrollLayout.count():
+                item = self.scrollLayout.takeAt(0)
+                widget = item.widget()
+                if widget:
+                    widget.deleteLater()
 
+            # Add the "Select customer" label
             label = QLabel("Select customer to see Sales History")
             label.setWordWrap(True)
-            label.setStyleSheet("font-size: 14px; font-weight: bold; color: black;")
-            containerLayout.addWidget(label)
-            self.scrollLayout.addWidget(container)
+            label.setStyleSheet(
+                "font-size: 14px; font-weight: bold; color: black;"
+            )
+            self.scrollLayout.addWidget(label)
+
+            # Optional: scroll to top
+            self.scrollArea.verticalScrollBar().setValue(0)
             return
 
         cust = self.selectedCustomerDetails
@@ -116,7 +124,9 @@ class SideBar(QWidget):
         def infoLabel(text):
             lbl = QLabel(text)
             lbl.setWordWrap(True)
-            lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: black;")
+            lbl.setStyleSheet(
+                "font-size: 14px; font-weight: bold; color: black;"
+            )
             return lbl
 
         infoLayout.addWidget(infoLabel(f"Name: {cust.get('name', '')}"))
@@ -128,8 +138,8 @@ class SideBar(QWidget):
 
         # ---------- Update Button ----------
         updateBtn = QPushButton("Update")
-        updateBtn.setCursor(Qt.PointingHandCursor)
         updateBtn.setFixedWidth(100)
+        updateBtn.setCursor(Qt.PointingHandCursor)
         updateBtn.clicked.connect(self.openCustomerUpdateDialog)
         updateBtn.setStyleSheet("""
             QPushButton {
@@ -148,37 +158,59 @@ class SideBar(QWidget):
         btnLayout.addStretch()
         btnLayout.addWidget(updateBtn)
         btnLayout.addStretch()
+
         btnWidget = QWidget()
         btnWidget.setLayout(btnLayout)
         self.scrollLayout.addWidget(btnWidget)
 
-        # ---------- Show Sales ONLY if from DB ----------
+        # ---------- If customer not from DB ----------
         if "customerID" not in cust:
-            return  # Newly added customer → no sales yet
+            self.scrollLayout.addStretch()
+            return
 
-        # ---------- Sales History ----------
+        # ---------- Sales Title ----------
+        title = QLabel("Previous Sales History")
+        title.setStyleSheet(
+            "font-size: 14px; font-weight: bold; margin-top: 10px;"
+        )
+        title.setWordWrap(True)
+        self.scrollLayout.addWidget(title)
+
         db = DbClient()
         sales = db.getCustomerSalesHistory(cust["customerID"])
 
-        title = QLabel("Previous Sales History:")
-        title.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 10px;")
-        title.setWordWrap(True)
-        self.scrollLayout.addWidget(title)
+        # ---------- Sales Container (fills remaining space) ----------
+        salesContainer = QWidget()
+        salesContainerLayout = QVBoxLayout(salesContainer)
+        salesContainerLayout.setContentsMargins(0, 0, 0, 0)
+
+        salesContainer.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Expanding
+        )
 
         if not sales:
             noSalesLabel = QLabel("No sales found")
             noSalesLabel.setWordWrap(True)
-            noSalesLabel.setStyleSheet("font-size: 13px; color: #555555;")
-            self.scrollLayout.addWidget(noSalesLabel)
+            noSalesLabel.setStyleSheet(
+                "font-size: 13px; color: #555555;"
+            )
+            salesContainerLayout.addWidget(noSalesLabel)
+            self.scrollLayout.addWidget(salesContainer)
+
+            self.scrollLayout.addStretch()
             return
 
         # ---------- Sales Table ----------
         salesTable = QTableWidget()
         salesTable.setColumnCount(4)
-        salesTable.setHorizontalHeaderLabels(["Date", "Item Name", "Qty", "Price"])
+        salesTable.setHorizontalHeaderLabels(
+            ["Date", "Item Name", "Qty", "Price"]
+        )
         salesTable.verticalHeader().setVisible(False)
         salesTable.setEditTriggers(QTableWidget.NoEditTriggers)
         salesTable.setSelectionMode(QTableWidget.NoSelection)
+
         salesTable.setStyleSheet("""
             QTableWidget {
                 background-color: white;
@@ -187,22 +219,20 @@ class SideBar(QWidget):
             QHeaderView::section {
                 background-color: #F0F0F0;
                 font-weight: bold;
-                border: none;
             }
             QScrollBar:vertical, QScrollBar:horizontal {
-                background: #E0F3FF; /* light blue track */
-                border-radius: 4px;
-                height: 10px;
+                background: #E0F3FF;
                 width: 10px;
+                height: 10px;
+                border-radius: 4px;
             }
             QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
-                background: #5BC0FF; /* slightly darker blue handle */
+                background: #5BC0FF;
+                border-radius: 5px;
                 min-height: 20px;
                 min-width: 20px;
-                border-radius: 5px;
             }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
-            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+            QScrollBar::add-line, QScrollBar::sub-line {
                 height: 0px;
                 width: 0px;
             }
@@ -216,54 +246,26 @@ class SideBar(QWidget):
             salesTable.setItem(row, 3, QTableWidgetItem(f"{price:.2f}"))
 
         salesTable.resizeColumnsToContents()
-        salesTable.resizeRowsToContents()
 
         salesScroll = QScrollArea()
         salesScroll.setWidgetResizable(True)
         salesScroll.setWidget(salesTable)
-        salesScroll.setFixedHeight(300)
+        salesScroll.setSizePolicy(
+            QSizePolicy.Expanding,
+            QSizePolicy.Expanding
+        )
         salesScroll.setStyleSheet("""
             QScrollArea {
                 border: 1px solid #CCCCCC;
                 border-radius: 5px;
             }
-            QScrollBar:vertical, QScrollBar:horizontal {
-                background: #E0F3FF;
-                border-radius: 4px;
-                height: 10px;
-                width: 10px;
-            }
-            QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
-                background: #5BC0FF;
-                border-radius: 5px;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
-            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
-                height: 0px;
-                width: 0px;
-            }
         """)
 
-        self.scrollLayout.addWidget(salesScroll)
+        salesContainerLayout.addWidget(salesScroll)
+        self.scrollLayout.addWidget(salesContainer)
 
-        # ---------- Apply modern scrollbar to main sidebar scroll area ----------
-        self.scrollArea.setStyleSheet("""
-            QScrollBar:vertical, QScrollBar:horizontal {
-                background: #E0F3FF;
-                border-radius: 4px;
-                height: 10px;
-                width: 10px;
-            }
-            QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
-                background: #5BC0FF;
-                border-radius: 5px;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
-            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
-                height: 0px;
-                width: 0px;
-            }
-        """)
+        # ---------- ONE FINAL STRETCH ----------
+        self.scrollLayout.addStretch()
 
 
 

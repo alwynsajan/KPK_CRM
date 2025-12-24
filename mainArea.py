@@ -377,9 +377,13 @@ class MainArea(QWidget):
 
     # ------------------- Clear Customer Data -------------------
     def clearCustomerData(self):
-        self.selectedCustomerDetails.clear()
-        self.customerInput.clear()
-        self.sideBar.updateCustomerInfo()
+        if self.selectedCustomerDetails:
+            self.selectedCustomerDetails.clear()
+            self.customerInput.clear()
+            self.sideBar.updateCustomerInfo()
+        else:
+            self.selectedCustomerDetails.clear()
+            self.customerInput.clear()
 
     # ------------------- Clear Product Fields -------------------
     def clearProductFields(self):
@@ -517,20 +521,6 @@ class MainArea(QWidget):
 
     # ------------------- Handle Void Sale -------------------
     def handleVoidSale(self):
-        # reply = QMessageBox.question(
-        #     self,
-        #     "Void Sale",
-        #     "Are you sure you want to void this sale?\nAll data will be cleared.",
-        #     QMessageBox.Yes | QMessageBox.No,
-        #     QMessageBox.No
-        # )
-
-        # if reply != QMessageBox.Yes:
-        #     return
-
-        #  Clear Customer 
-        self.customerInput.clear()
-        self.selectedCustomerDetails.clear()
 
         #  Clear Product Inputs 
         self.productNameInput.clear()
@@ -557,8 +547,17 @@ class MainArea(QWidget):
         #  Clear Internal Product List 
         self.finalProductList = []
 
-        # IMPORTANT: refresh sidebar
-        self.sideBar.updateCustomerInfo()
+        if self.selectedCustomerDetails:
+            #  Clear Customer 
+            self.customerInput.clear()
+            self.selectedCustomerDetails.clear()
+            # IMPORTANT: refresh sidebar
+            self.sideBar.updateCustomerInfo()
+
+        else:
+            #  Clear Customer 
+            self.customerInput.clear()
+            self.selectedCustomerDetails.clear()
 
 
     # ------------------- Handle Save Sales -------------------

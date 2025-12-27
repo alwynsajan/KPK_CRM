@@ -171,8 +171,9 @@ class CardFrame(QFrame):
                 border-radius: 8px;
             }
         """)
+        # Remove fixed height constraint
         if height:
-            self.setFixedHeight(height)
+            self.setMinimumHeight(height)
 
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(16, 12, 16, 12)
@@ -201,22 +202,27 @@ class MainArea(QWidget):
         self.finalProductList = finalProductList or []
         self.sideBar = sidebar
 
-        # Main layout
+        # Main layout with stretch factors
         mainAreaLayout = QVBoxLayout(self)
         mainAreaLayout.setContentsMargins(20, 15, 20, 15)
         mainAreaLayout.setSpacing(15)
+        
+        # Remove stretch from main layout to let rows control height
+        mainAreaLayout.setStretch(0, 0)
 
-        # REMOVED: "CREATE NEW SALE" heading as requested
-
-        # ------------------- Top Row: Customer & Product -------------------
+        # ------------------- Top Row: Customer & Product (20%) -------------------
         topRow = QHBoxLayout()
         topRow.setSpacing(15)
+        
+        # Create container widget for top row with stretch factor
+        topRowWidget = QWidget()
+        topRowWidget.setLayout(topRow)
 
-        # Card 1: Customer Section (30%)
-        customerCard = CardFrame("Customer", 140)
+        # Card 1: Customer Section (30% width of top row)
+        customerCard = CardFrame("Customer")  
         customerCard.layout.setContentsMargins(12, 10, 12, 10)
         
-        # Customer input with label removed (as requested)
+        # Customer input with label removed 
         self.customerInput = ModernLineEdit("Search or enter customer name")
         customerCard.layout.addWidget(self.customerInput)
         
@@ -245,8 +251,8 @@ class MainArea(QWidget):
         
         topRow.addWidget(customerCard, 3)  # 30% width
 
-        # Card 2: Product Section (70%)
-        productCard = CardFrame("Add Products", 140) 
+        # Card 2: Product Section (70% width of top row)
+        productCard = CardFrame("Add Products")  
         productCard.layout.setContentsMargins(12, 10, 12, 10)
         
         # Product form layout - single row
@@ -255,17 +261,17 @@ class MainArea(QWidget):
         
         # Product name with reduced width
         self.productNameInput = ModernLineEdit("Product name")
-        self.productNameInput.setMinimumWidth(180)  # Reduced width
+        self.productNameInput.setMinimumWidth(180)  
         productFormLayout.addWidget(self.productNameInput, 4)  # 40% of product card
         
         # Quantity with reduced width
         self.qtyInput = ModernLineEdit("Qty")
-        self.qtyInput.setFixedWidth(70)  # Reduced width
+        self.qtyInput.setFixedWidth(70)  
         productFormLayout.addWidget(self.qtyInput, 1)  # 10% of product card
         
         # Price with reduced width
         self.priceInput = ModernLineEdit("Price")
-        self.priceInput.setFixedWidth(90)  # Reduced width
+        self.priceInput.setFixedWidth(90) 
         productFormLayout.addWidget(self.priceInput, 2)  # 20% of product card
         
         # Add button with reduced width
@@ -297,10 +303,11 @@ class MainArea(QWidget):
         
         topRow.addWidget(productCard, 7)  # 70% width
 
-        mainAreaLayout.addLayout(topRow)
+        # Add top row widget to main layout with 20% stretch
+        mainAreaLayout.addWidget(topRowWidget, 2)  
 
-        # ------------------- Cart Items Table -------------------
-        tableCard = CardFrame("Cart Items", 280)
+        # ------------------- Cart Items Table (40%) -------------------
+        tableCard = CardFrame("Cart Items")  
         tableCard.layout.setContentsMargins(2, 2, 2, 2)
 
         # Product table
@@ -328,7 +335,6 @@ class MainArea(QWidget):
             }
         """)
 
-        # IMPORTANT: fixed mode, no auto stretching
         header.setSectionResizeMode(QHeaderView.Fixed)
         header.setStretchLastSection(False)
 
@@ -397,21 +403,26 @@ class MainArea(QWidget):
         self.productTable.cellChanged.connect(self.updateTotalPrice)
 
         tableCard.layout.addWidget(self.productTable)
-        mainAreaLayout.addWidget(tableCard, 1)
+        # Add table card to main layout with 40% stretch
+        mainAreaLayout.addWidget(tableCard, 4)  # 40% of available space
 
-        # ------------------- Bottom Row: Notes, Payment, Total -------------------
+        # ------------------- Bottom Row: Notes, Payment, Total (15%) -------------------
         bottomRow = QHBoxLayout()
         bottomRow.setSpacing(15)
+        
+        # Create container widget for bottom row
+        bottomRowWidget = QWidget()
+        bottomRowWidget.setLayout(bottomRow)
 
         # Notes Card
-        notesCard = CardFrame("Notes", 120)
+        notesCard = CardFrame("Notes")
         
         self.notesInput = ModernLineEdit("Enter any notes...")
         notesCard.layout.addWidget(self.notesInput)
         bottomRow.addWidget(notesCard, 1)
 
         # Payment Card
-        paymentCard = CardFrame("Payment Method", 120)
+        paymentCard = CardFrame("Payment Method")
         
         paymentOptionsLayout = QHBoxLayout()
         paymentOptionsLayout.setSpacing(12)
@@ -438,7 +449,7 @@ class MainArea(QWidget):
         bottomRow.addWidget(paymentCard, 1)
 
         # Total Card 
-        totalCard = CardFrame("Grand Total", 120)  # No title
+        totalCard = CardFrame("Grand Total")
         totalCard.layout.setAlignment(Qt.AlignCenter)
         
         self.totalAmountValue = QLabel("$0.00")
@@ -460,9 +471,10 @@ class MainArea(QWidget):
         totalCard.layout.addWidget(self.totalAmountValue)
         bottomRow.addWidget(totalCard, 1)
 
-        mainAreaLayout.addLayout(bottomRow)
+        # Add bottom row widget to main layout with 15% stretch
+        mainAreaLayout.addWidget(bottomRowWidget, 1.5)  # 15% of available space
 
-        # ------------------- Action Buttons -------------------
+        # ------------------- Action Buttons (Fixed Height) -------------------
         actionLayout = QHBoxLayout()
         actionLayout.setSpacing(15)
         
@@ -480,7 +492,12 @@ class MainArea(QWidget):
         actionLayout.addWidget(self.voidSaleBtn)
         actionLayout.addStretch()
         
-        mainAreaLayout.addLayout(actionLayout)
+        # Create container for action buttons with fixed height
+        actionWidget = QWidget()
+        actionWidget.setFixedHeight(60)
+        actionWidget.setLayout(actionLayout)
+        
+        mainAreaLayout.addWidget(actionWidget)
 
         # Connect Add Product Button
         self.checkoutBtn.clicked.connect(
@@ -570,7 +587,6 @@ class MainArea(QWidget):
             }
             QLabel:hover {
                 background-color: #C53030;
-                cursor: pointer;
             }
         """)
         deleteLabel.setCursor(Qt.PointingHandCursor)
@@ -784,12 +800,7 @@ class MainArea(QWidget):
 
             # Clear UI after save
             if type != "invoice":
-                self.productTable.setRowCount(0)
-                self.notesInput.clear()
-                self.customerInput.clear()
-                self.selectedCustomerDetails.clear()
-                self.totalAmountValue.setText("$0.00")
-                self.finalProductList = []
+                self.handleVoidSale()
             return 1
 
         else:

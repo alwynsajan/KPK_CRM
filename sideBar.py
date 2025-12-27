@@ -36,13 +36,13 @@ class SideBar(QWidget):
         self.mainLayout.setAlignment(Qt.AlignTop)
 
         # -------- Buttons with modern design --------
-        btnNames = ["Add Product to DB", "Add new Customer"]
+        btnNames = ["Add New Product", "Add new Customer"]
         btnIcons = ["📦", "👤"]
         
         for name, icon in zip(btnNames, btnIcons):
             btn = QPushButton(f"{icon}  {name}")
             
-            if name == "Add Product to DB":
+            if name == "Add New Product":
                 btn.clicked.connect(self.openProductForm)
             elif name == "Add new Customer":
                 btn.clicked.connect(self.openCustomerForm)

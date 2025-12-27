@@ -180,13 +180,18 @@ class CustomerForm(QWidget):
             "ABN": self.abnInput.text().strip(),
         }
 
+        # ---- Insert into DB ----
         response = db.addCustomerData(customerData)
 
         if response["status"] != "Success":
-            QMessageBox.critical(self, "Database Error", response["message"])
+            QMessageBox.critical(self, "Database Error", "Failed to add customer.")
             return
 
-        # -------- Emit signal with full customer data --------
+        # Attach generated customerID
+        customerData["customerID"] = response["customerID"]
+
+        # Emit signal with FULL customer data (including ID)
         self.customerAdded.emit(customerData)
 
         self.close()
+

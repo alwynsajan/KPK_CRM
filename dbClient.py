@@ -46,22 +46,48 @@ class DbClient:
         return response
 
     def addCustomerData(self, customerData):
-        """Add customer data to the customerData table"""
         query = """
-        INSERT INTO customerData (name, customerType, email, phone, address, state, postcode, ABN)
-        VALUES (%s, %s, %s, %s, %s, %s, %s,%s)
+            INSERT INTO customerData
+            (name, customerType, email, phone, address, state, postcode, ABN)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
-        return self.executeQuery(query, (
-            customerData['name'],
-            customerData['customerType'],
-            customerData['email'],
-            customerData['phone'],
-            customerData['address'],
-            customerData['state'],
-            customerData['postcode'],
-            customerData['ABN']
-        ))
-    
+
+        values = (
+            customerData["name"],
+            customerData["customerType"],
+            customerData["email"],
+            customerData["phone"],
+            customerData["address"],
+            customerData["state"],
+            customerData["postcode"],
+            customerData["ABN"]
+        )
+
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor()
+            cursor.execute(query, values)
+            conn.commit()
+
+            response = {
+                "status": "Success",
+                "message": "Customer added successfully.",
+                "customerID": cursor.lastrowid
+            }
+
+        except mysql.connector.Error as err:
+            conn.rollback()
+            response = {
+                "status": "Failed",
+                "message": f"Error: {err}"
+            }
+
+        finally:
+            cursor.close()
+            conn.close()
+
+        return response
+
     def getCustomerName(self):
         """Retrieve all customer IDs and names from the customerData table"""
         query = "SELECT customerID, name FROM customerData"
@@ -334,6 +360,17 @@ class DbClient:
         cursor = conn.cursor()
         cursor.execute(query, (customerID,))
         return cursor.fetchall()
+
+    def getNextCustomerID(self):
+        query = """
+            SELECT AUTO_INCREMENT
+            FROM information_schema.TABLES
+            WHERE TABLE_SCHEMA = 'KPKdb'
+            AND TABLE_NAME = 'customerData'
+        """
+        self.cursor.execute(query)
+        result = self.cursor.fetchone()
+        return result[0] if result else None
 
 
 

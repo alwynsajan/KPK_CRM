@@ -34,26 +34,6 @@ class Header(QWidget):
         topRow.addWidget(self.titleLabel)
         topRow.addStretch()
         
-        # User info with light gray for contrast
-        userWidget = QWidget()
-        userWidget.setStyleSheet("background: transparent;")
-        userLayout = QHBoxLayout(userWidget)
-        userLayout.setSpacing(10)
-        
-        userIcon = QLabel("👤")
-        userIcon.setStyleSheet("font-size: 16px; color: #E0E6ED;")
-        
-        userName = QLabel("Admin User")
-        userName.setStyleSheet("""
-            color: #E0E6ED;  /* Light gray for contrast */
-            font-weight: 500;
-            font-size: 14px;
-        """)
-        
-        userLayout.addWidget(userIcon)
-        userLayout.addWidget(userName)
-        topRow.addWidget(userWidget)
-        
         headerLayout.addLayout(topRow)
 
         # Bottom row: Navigation and subtitle

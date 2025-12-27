@@ -291,19 +291,19 @@ class DbClient:
         return response
 
     
-    def getSalesByCustomerName(self, customerName):
+    def getSalesByCustomerID(self, customerID):
         """Retrieve all sales records for a given customer name."""
         query = """
         SELECT date, customerAddress, customerPhone, productName, productType, colour, price, quantity, paymentType
-        FROM salesData
-        WHERE customerName = %s
+        FROM sales
+        WHERE customerID = %s
         ORDER BY date DESC
         """
 
         try:
             conn = self.connectToDB()
             cursor = conn.cursor(dictionary=True)
-            cursor.execute(query, (customerName,))
+            cursor.execute(query, (customerID,))
             sales = cursor.fetchall()
         except mysql.connector.Error as err:
             print(f"Database Error: {err}")
@@ -356,22 +356,91 @@ class DbClient:
             WHERE s.customerID = %s
             ORDER BY s.saleDate DESC
         """
-        conn = self.connectToDB()
-        cursor = conn.cursor()
-        cursor.execute(query, (customerID,))
-        return cursor.fetchall()
 
-    def getNextCustomerID(self):
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor()
+            cursor.execute(query, (customerID,))
+            result = cursor.fetchall()
+
+        except mysql.connector.Error as err:
+            result = []
+            print(f"Database Error: {err}")
+
+        finally:
+            cursor.close()
+            conn.close()
+
+        return result
+
+    # ------------------- Update Customer Details -------------------
+    def updateCustomerData(self, customerID, customerData):
+        """Update customer details in the database."""
         query = """
-            SELECT AUTO_INCREMENT
-            FROM information_schema.TABLES
-            WHERE TABLE_SCHEMA = 'KPKdb'
-            AND TABLE_NAME = 'customerData'
+        UPDATE customerData 
+        SET name = %s, 
+            customerType = %s,
+            email = %s,
+            phone = %s,
+            address = %s,
+            state = %s,
+            postcode = %s,
+            ABN = %s
+        WHERE customerID = %s
         """
-        self.cursor.execute(query)
-        result = self.cursor.fetchone()
-        return result[0] if result else None
+        
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor()
+            
+            cursor.execute(query, (
+                customerData.get("name", ""),
+                customerData.get("customerType", ""),
+                customerData.get("email", ""),
+                customerData.get("phone", ""),
+                customerData.get("address", ""),
+                customerData.get("state", ""),
+                customerData.get("postcode", ""),
+                customerData.get("ABN", ""),
+                customerID
+            ))
+            
+            conn.commit()
+            
+            if cursor.rowcount > 0:
+                return {"status": "Success", "message": "Customer updated successfully"}
+            else:
+                return {"status": "Error", "message": "No customer found with given ID"}
+                
+        except mysql.connector.Error as err:
+            print(f"Database Error: {err}")
+            return {"status": "Error", "message": f"Database error: {err}"}
+        finally:
+            cursor.close()
+            conn.close()
 
+    # ------------------- Delete Customer -------------------
+    def deleteCustomerData(self, customerID):
+        """Delete customer from database."""
+        query = "DELETE FROM customerData WHERE customerID = %s"
+        
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor()
+            cursor.execute(query, (customerID,))
+            conn.commit()
+            
+            if cursor.rowcount > 0:
+                return {"status": "Success", "message": "Customer deleted successfully"}
+            else:
+                return {"status": "Error", "message": "No customer found with given ID"}
+                
+        except mysql.connector.Error as err:
+            print(f"Database Error: {err}")
+            return {"status": "Error", "message": f"Database error: {err}"}
+        finally:
+            cursor.close()
+            conn.close()
 
 
 

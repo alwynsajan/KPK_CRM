@@ -244,7 +244,7 @@ class ProductForm(QWidget):
         self.clearBtn = ModernButton("Clear", "secondary", width=90)
         self.clearBtn.clicked.connect(self.clearFields)
         
-        self.addBtn = ModernButton("Add Product", "primary", width=120)
+        self.addBtn = ModernButton("Add Product", "primary", width=130)
         self.addBtn.clicked.connect(self.addProduct)
         
         button_layout.addWidget(self.clearBtn)

@@ -10,6 +10,7 @@ from PySide6.QtGui import QPalette, QColor
 from productForm import ProductForm
 from addNewCustomer import CustomerForm
 from dbClient import DbClient
+from customerUpdateDialog import openCustomerUpdateDialog as openUpdateDialog
 
 
 class SideBar(QWidget):
@@ -231,7 +232,7 @@ class SideBar(QWidget):
         self.contentLayout.addWidget(detailsCard)
 
         # ---------- Update Button ----------
-        updateBtn = QPushButton("✏️ Update Customer")
+        updateBtn = QPushButton("✏️ Update Customer Details")
         updateBtn.setFixedHeight(40)
         updateBtn.setCursor(Qt.PointingHandCursor)
         updateBtn.clicked.connect(self.openCustomerUpdateDialog)
@@ -423,8 +424,17 @@ class SideBar(QWidget):
         self.customerAdded.emit(customerData)  # forward signal
 
     def openCustomerUpdateDialog(self):
-        QMessageBox.information(
-            self,
-            "Update Customer",
-            "Customer update dialog coming soon."
-        )
+        """Open customer update dialog with current customer details"""
+        if not self.selectedCustomerDetails:
+            QMessageBox.warning(
+                self,
+                "No Customer Selected",
+                "Please select a customer first."
+            )
+            return
+        
+        # Open the dialog
+        openUpdateDialog(self, self.selectedCustomerDetails)
+        
+        # Refresh the sidebar if customer was updated
+        self.updateCustomerInfo()

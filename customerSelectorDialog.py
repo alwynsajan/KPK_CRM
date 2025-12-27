@@ -413,7 +413,12 @@ class CustomerSelectorDialog(QDialog):
                 "customerID": custID,
                 "name": custName,
                 "address": customerAddress,
-                "phone": customerPhone
+                "phone": customerPhone,
+                "email": customerDetails[7] if customerDetails else "",
+                "ABN": customerDetails[8] if customerDetails else "",
+                "customerType": customerDetails[1] if customerDetails else "",
+                "state": customerDetails[4] if customerDetails else "",
+                "postcode": customerDetails[5] if customerDetails else ""
             })
 
         # Refresh SideBar in parent window

@@ -10,7 +10,7 @@ from dbClient import DbClient
 from customerSelectorDialog import openCustomerSelector
 from productSelectorDialog import openProductSelector
 from generatePDF import generateInvoice
-from datetime import date
+from datetime import datetime
 
 # ------------------- Modern Line Edit -------------------
 class ModernLineEdit(QLineEdit):
@@ -704,120 +704,149 @@ class MainArea(QWidget):
 
     # ------------------- Handle Save Sales -------------------
     def handleSaveSales(self, type=None):
-        # Customer Check
+        # ------------------ Customer Check ------------------
         customerName = self.customerInput.text().strip()
 
-        # If no selected customer details, try using input field
         if not self.selectedCustomerDetails:
             if customerName:
                 self.selectedCustomerDetails = {
-                    "name": customerName
+                    "name": customerName,
+                    "customerID": None
                 }
             else:
                 self.selectedCustomerDetails = {}
 
-        # Collect Product Table Data
+        # ------------------ Collect Product Table Data ------------------
         self.finalProductList = []
+
         for row in range(self.productTable.rowCount()):
             nameItem = self.productTable.item(row, 0)
             qtyItem = self.productTable.item(row, 1)
             priceItem = self.productTable.item(row, 2)
             discountItem = self.productTable.item(row, 3)
 
-            # Validate Quantity
+            # ---- Validate Product Name ----
+            if not nameItem or not nameItem.text().strip():
+                QMessageBox.warning(
+                    self,
+                    "Invalid Product",
+                    f"Missing product name on row {row + 1}."
+                )
+                return {"status": "Failed", "saleID": None}
+
+            # ---- Validate Quantity ----
             try:
-                quantity = int(float(qtyItem.text().replace('%', ''))) if qtyItem and qtyItem.text() else 0
+                quantity = int(float(qtyItem.text())) if qtyItem and qtyItem.text() else 0
+                if quantity <= 0:
+                    raise ValueError
             except ValueError:
                 QMessageBox.warning(
                     self,
                     "Invalid Quantity",
-                    f"Invalid quantity on row {row+1}. Please enter a valid number."
+                    f"Invalid quantity on row {row + 1}."
                 )
-                return -1
+                return {"status": "Failed", "saleID": None}
 
-            # Validate Price
+            # ---- Validate Price ----
             try:
-                price_text = priceItem.text().replace('$', '').replace('%', '') if priceItem and priceItem.text() else "0"
-                price = float(price_text)
+                price = float(priceItem.text().replace("$", "")) if priceItem and priceItem.text() else 0
+                if price < 0:
+                    raise ValueError
             except ValueError:
                 QMessageBox.warning(
                     self,
                     "Invalid Price",
-                    f"Invalid unit price on row {row+1}. Please enter a valid number."
+                    f"Invalid price on row {row + 1}."
                 )
-                return -1
+                return {"status": "Failed", "saleID": None}
 
-            # Validate Discount
+            # ---- Validate Discount ----
             try:
-                discount_text = discountItem.text().replace('$', '').replace('%', '') if discountItem and discountItem.text() else "0"
-                discount = float(discount_text)
+                discount = float(discountItem.text().replace("%", "")) if discountItem and discountItem.text() else 0
+                if discount < 0 or discount > 100:
+                    raise ValueError
             except ValueError:
                 QMessageBox.warning(
                     self,
                     "Invalid Discount",
-                    f"Invalid discount on row {row+1}. Please enter a valid number."
+                    f"Invalid discount on row {row + 1}."
                 )
-                return -1
+                return {"status": "Failed", "saleID": None}
 
-            productData = {
+            self.finalProductList.append({
                 "name": nameItem.text().strip(),
                 "quantity": quantity,
                 "price": price,
                 "discount": discount
-            }
+            })
 
-            self.finalProductList.append(productData)
-
-        # Validate Products
+        # ------------------ Validate Products ------------------
         if not self.finalProductList:
-            QMessageBox.warning(self, "No Products", "Please add at least one product before proceeding.")
-            return -1
+            QMessageBox.warning(
+                self,
+                "No Products",
+                "Please add at least one product before proceeding."
+            )
+            return {"status": "Failed", "saleID": None}
 
-        # Validate Payment
+        # ------------------ Validate Payment ------------------
         checkedButton = self.paymentGroup.checkedButton()
         if not checkedButton:
-            QMessageBox.warning(self, "Payment Type Required", "Please select a payment type before proceeding.")
-            return -1
+            QMessageBox.warning(
+                self,
+                "Payment Type Required",
+                "Please select a payment type before proceeding."
+            )
+            return {"status": "Failed", "saleID": None}
 
+        # ------------------ Prepare Sale Data ------------------
         saleData = {
-            "saleDate": date.today(),
+            "saleDateTime": datetime.now(),
             "customerID": self.selectedCustomerDetails.get("customerID"),
             "paymentType": checkedButton.text(),
             "note": self.notesInput.text().strip(),
             "items": self.finalProductList
         }
 
+        # ------------------ Save to Database ------------------
         response = self.dbClent.addSaleWithItems(saleData)
 
-        # Popup Result
+        # ------------------ Handle Result ------------------
         if response.get("status") == "Success":
+            saleID = response.get("saleID")
+
             if type != "invoice":
                 QMessageBox.information(
                     self,
                     "Success",
-                    "Sale saved successfully!"
+                    f"Sale saved successfully!"
                 )
 
-            # Clear UI after save
             if type != "invoice":
                 self.handleVoidSale()
-            return 1
+
+            return {
+                "status": "Success",
+                "saleID": saleID
+            }
 
         else:
             QMessageBox.critical(
                 self,
                 "Error",
-                f"Failed to save sale.\n\n{response.get('error')}"
+                f"Failed to save sale.\n\n{response.get('message')}"
             )
-            return -1
+            return {
+                "status": "Failed",
+                "saleID": None
+            }
 
     # ------------------- Handle Print Invoice -------------------
     def handlePrintInvoice(self):
         # Save Sale First
         status = self.handleSaveSales("invoice")
 
-        if status != 1:
-            self.finalProductList = []
+        if status["status"] != "Success":
             return
 
         customerData = {
@@ -848,9 +877,11 @@ class MainArea(QWidget):
             })
 
         # Generate Invoice
-        pdfPath = generateInvoice(
+        generateInvoice(
             customerData=customerData,
-            productData=productDataForPDF
+            productData=productDataForPDF,
+            saleID=status["saleID"],
+            date=datetime.now()
         )
 
         QMessageBox.information(
@@ -865,14 +896,3 @@ class MainArea(QWidget):
     # ------------------- Refresh Customer Sidebar -------------------
     def refreshCustomerSidebar(self):
         self.sideBar.updateCustomerInfo()
-
-    # ------------------- Resize Event for Responsive Columns -------------------
-    # def resizeEvent(self, event):
-    #     super().resizeEvent(event)
-    #     totalWidth = self.productTable.viewport().width()
-    #     self.productTable.setColumnWidth(0, int(totalWidth * 0.5))
-
-    #     remaining = totalWidth - self.productTable.columnWidth(0)
-    #     perCol = remaining // 5
-    #     for col in range(1, 6):
-    #         self.productTable.setColumnWidth(col, perCol)

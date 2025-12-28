@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS productData (
 -- ===============================
 CREATE TABLE IF NOT EXISTS sales (
     saleID INT AUTO_INCREMENT PRIMARY KEY,
-    saleDate DATE NOT NULL,
+    saleDateTime DATETIME NOT NULL,
     customerID INT,
     paymentType VARCHAR(50) NOT NULL,
     note TEXT,

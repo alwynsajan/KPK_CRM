@@ -1,5 +1,6 @@
 import mysql.connector
 import json
+from datetime import datetime
 
 class DbClient:
     def __init__(self, configFile='config.json'):
@@ -202,21 +203,13 @@ class DbClient:
             conn.close()
         return results
     
-
+    # ------------------- Add Sale with Items -------------------
     def addSaleWithItems(self, saleData):
-        """
-        Add a sale with its items to the database.
-        saleData: {
-            "saleDate": date,
-            "customerID": str or None,
-            "paymentType": str,
-            "note": str,
-            "items": [
-                {"name": str, "price": float, "quantity": int, "discount": float}
-            ]
+        response = {
+            "status": "Failed",
+            "message": "Unknown error",
+            "saleID": None
         }
-        """
-        response = {"status": "Failed", "message": "Unknown error"}
 
         if not saleData.get("items") or not saleData.get("paymentType"):
             response["message"] = "No products or payment type selected."
@@ -227,62 +220,83 @@ class DbClient:
             cursor = conn.cursor()
 
             # ------------------ Insert Sale ------------------
-            customerID = saleData.get("customerID")
-            if not customerID:
-                customerID = None  # store NULL if no customer selected
+            customerID = saleData.get("customerID") or None
 
             saleQuery = """
-                INSERT INTO sales (saleDate, customerID, paymentType, note)
+                INSERT INTO sales (saleDateTime, customerID, paymentType, note)
                 VALUES (%s, %s, %s, %s)
             """
-            cursor.execute(saleQuery, (
-                saleData["saleDate"],
-                customerID,
-                saleData["paymentType"],
-                saleData.get("note")
-            ))
 
-            saleID = cursor.lastrowid  # get the auto-increment saleID
+            saleDateTime = saleData.get("saleDateTime") or datetime.now()
+
+            cursor.execute(
+                saleQuery,
+                (
+                    saleDateTime,
+                    customerID,
+                    saleData["paymentType"],
+                    saleData.get("note")
+                )
+            )
+
+            saleID = cursor.lastrowid
 
             # ------------------ Insert Sale Items ------------------
             itemQuery = """
                 INSERT INTO saleItems (saleID, productName, cost, quantity)
                 VALUES (%s, %s, %s, %s)
             """
+
+            totalSaleAmount = 0
+
             for item in saleData["items"]:
-                # calculate final cost after discount
                 price = float(item.get("price", 0))
                 discount = float(item.get("discount", 0))
-                cost = price * (1 - discount / 100)
+                quantity = int(item.get("quantity", 1))
 
-                cursor.execute(itemQuery, (
-                    saleID,
-                    item["name"],
-                    cost,
-                    int(item.get("quantity", 1))
-                ))
+                cost = price * (1 - discount / 100)
+                totalSaleAmount += cost * quantity
+
+                cursor.execute(
+                    itemQuery,
+                    (saleID, item["name"], cost, quantity)
+                )
 
             # ------------------ Update Per-Day Sales ------------------
-            totalSaleAmount = sum(
-                float(item.get("price", 0)) * int(item.get("quantity", 1)) * (1 - float(item.get("discount", 0)) / 100)
-                for item in saleData["items"]
-            )
+            saleDateOnly = saleDateTime.date()
 
-            # Check if record exists
-            cursor.execute("SELECT totalSales FROM perDaySale WHERE saleDate = %s", (saleData["saleDate"],))
+            cursor.execute(
+                "SELECT totalSales FROM perDaySale WHERE saleDate = %s",
+                (saleDateOnly,)
+            )
             result = cursor.fetchone()
+
             if result:
-                updatedTotal = float(result[0]) + totalSaleAmount
-                cursor.execute("UPDATE perDaySale SET totalSales = %s WHERE saleDate = %s", (updatedTotal, saleData["saleDate"]))
+                cursor.execute(
+                    "UPDATE perDaySale SET totalSales = %s WHERE saleDate = %s",
+                    (float(result[0]) + totalSaleAmount, saleDateOnly)
+                )
             else:
-                cursor.execute("INSERT INTO perDaySale (saleDate, totalSales) VALUES (%s, %s)", (saleData["saleDate"], totalSaleAmount))
+                cursor.execute(
+                    "INSERT INTO perDaySale (saleDate, totalSales) VALUES (%s, %s)",
+                    (saleDateOnly, totalSaleAmount)
+                )
 
             conn.commit()
-            response = {"status": "Success", "message": f"Sale saved successfully with Sale ID {saleID}"}
+
+            response = {
+                "status": "Success",
+                "message": "Sale saved successfully",
+                "saleID": saleID
+            }
 
         except mysql.connector.Error as err:
             conn.rollback()
-            response = {"status": "Failed", "message": f"Database error: {err}"}
+            response = {
+                "status": "Failed",
+                "message": f"Database error: {err}",
+                "saleID": None
+            }
 
         finally:
             cursor.close()
@@ -314,35 +328,74 @@ class DbClient:
 
         return sales
     
-    def getCreditSalesData(self):
-        """Retrieve all sales transactions with payment type 'Credit'"""
+    def getCreditSales(self):
+        """Get all sales with payment type 'Credit'"""
         query = """
-        SELECT date, customerName, customerAddress, customerPhone, productName, price, quantity
-        FROM salesData WHERE paymentType = 'Credit'
+        SELECT 
+            s.saleID,
+            s.saleDateTime,
+            s.paymentType,
+            s.note,
+            c.name as customerName,
+            c.address as customerAddress,
+            c.phone as customerPhone,
+            c.state as customerState,
+            c.postcode as customerPostcode,
+            c.email as customerEmail
+        FROM sales s
+        LEFT JOIN customerData c ON s.customerID = c.customerID
+        WHERE s.paymentType = 'Credit'
+        ORDER BY s.saleDateTime DESC, s.saleID DESC
         """
+        
         try:
             conn = self.connectToDB()
             cursor = conn.cursor(dictionary=True)
             cursor.execute(query)
-            results = cursor.fetchall()
-        except mysql.connector.Error:
-            results = []
+            sales = cursor.fetchall()
+            
+            # Get items for each sale
+            for sale in sales:
+                saleID = sale['saleID']
+                items_query = """
+                SELECT productName, cost, quantity
+                FROM saleItems
+                WHERE saleID = %s
+                """
+                cursor.execute(items_query, (saleID,))
+                sale['items'] = cursor.fetchall()
+                
+        except mysql.connector.Error as err:
+            print(f"Database Error: {err}")
+            sales = []
         finally:
             cursor.close()
             conn.close()
-        return results
+        
+        return sales
 
-
-    def updatePaymentType(self, customerName):
-        """Update payment type to 'Paid' for a given customer"""
-        query = "UPDATE salesData SET paymentType = 'Paid' WHERE customerName = %s AND paymentType = 'Credit'"
+    def updatePaymentType(self, saleID, paymentType):
+        """Update payment type for a sale"""
+        query = """
+        UPDATE sales
+        SET paymentType = %s
+        WHERE saleID = %s
+        """
+        
         try:
             conn = self.connectToDB()
             cursor = conn.cursor()
-            cursor.execute(query, (customerName,))
+            cursor.execute(query, (paymentType, saleID))
             conn.commit()
-        except mysql.connector.Error:
-            conn.rollback()
+            
+            if cursor.rowcount > 0:
+                return {"status": "Success", "message": "Payment type updated successfully"}
+            else:
+                return {"status": "Error", "message": "No sale found with given ID"}
+                
+        except mysql.connector.Error as err:
+            print(f"Database Error: {err}")
+            return {"status": "Error", "message": f"Database error: {err}"}
         finally:
             cursor.close()
             conn.close()
@@ -350,11 +403,11 @@ class DbClient:
     # ------------------- Get Customer Sales History -------------------
     def getCustomerSalesHistory(self, customerID):
         query = """
-            SELECT s.saleDate, si.productName, si.quantity, si.cost
+            SELECT s.saleDateTime, si.productName, si.quantity, si.cost
             FROM sales s
             JOIN saleItems si ON s.saleID = si.saleID
             WHERE s.customerID = %s
-            ORDER BY s.saleDate DESC
+            ORDER BY s.saleDateTime DESC
         """
 
         try:

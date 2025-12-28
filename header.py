@@ -4,8 +4,9 @@ from PySide6.QtGui import QPalette, QColor
 
 
 class Header(QWidget):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.main_window = parent  # Store reference to main window
         self.setFixedHeight(100)
         
         # Set dark blue background with good contrast
@@ -57,12 +58,24 @@ class Header(QWidget):
         
         for name in btnNames:
             btn = ModernNavButton(name)
+            if name == "💳 Credits":
+                btn.clicked.connect(self.openCreditSales)
             bottomRow.addWidget(btn)
             self.headerBtns.append(btn)
         
         headerLayout.addLayout(bottomRow)
 
         self.setLayout(headerLayout)
+    
+    def openCreditSales(self):
+        """Open credit sales dialog"""
+        if self.main_window:  # Check if we have a valid parent window
+            # Import here to avoid circular imports
+            from creditSalesDialog import CreditSalesDialog
+            dialog = CreditSalesDialog(self.main_window)
+            dialog.exec()
+        else:
+            print("Error: No parent window found for credit sales dialog")
 
 # ------------------- Modern Navigation Button -------------------
 class ModernNavButton(QPushButton):

@@ -11,20 +11,20 @@ from reportlab.lib.units import inch
 
 CONFIG_FILE = "config.json"
 
-def getInvoiceNumber():
-    # Load configuration
-    with open(CONFIG_FILE, "r") as file:
-        config = json.load(file)
+# def getInvoiceNumber():
+#     # Load configuration
+#     with open(CONFIG_FILE, "r") as file:
+#         config = json.load(file)
     
-    invoiceNo = config.get("invoiceNumber", 1000)  # Default if not found
-    newInvoiceNo = invoiceNo + 1
+#     invoiceNo = config.get("invoiceNumber", 1000)  # Default if not found
+#     newInvoiceNo = invoiceNo + 1
     
-    # Update config with new invoice number
-    config["invoiceNumber"] = newInvoiceNo
-    with open(CONFIG_FILE, "w") as file:
-        json.dump(config, file, indent=4)
+#     # Update config with new invoice number
+#     config["invoiceNumber"] = newInvoiceNo
+#     with open(CONFIG_FILE, "w") as file:
+#         json.dump(config, file, indent=4)
     
-    return invoiceNo
+#     return invoiceNo
 
 # Function to calculate item prices
 def calculateItemPrices(productData):
@@ -45,8 +45,8 @@ def calculateItemPrices(productData):
     return calculatedItems, subtotal, totalGst, total
 
 # Function to generate invoice
-def generateInvoice(customerData, productData):
-    invoiceNo = getInvoiceNumber()
+def generateInvoice(customerData, productData, saleID,date):
+    invoiceNo = 1000 + saleID
     
     # Ensure the 'Invoices' directory exists
     invoicesDir = "Invoices"
@@ -79,11 +79,14 @@ def generateInvoice(customerData, productData):
     with open(CONFIG_FILE, "r") as file:
         config = json.load(file)
 
+    # Use the date argument here
+    invoiceDateStr = date.strftime('%d/%m/%Y %I:%M:%S %p') if date else 'N/A'
+
     # Store and Invoice Details
     storeDetails = [
         [
             Paragraph(f"<b>{config['storeName']}</b><br/>Phone: {config['storePhone']}<br/>A.B.N. {config['storeABN']}", styles["Normal"]),
-            Paragraph(f"<b>Tax Invoice</b><br/>Invoice No: {invoiceNo}<br/>Date: {datetime.datetime.now().strftime('%d/%m/%Y %I:%M:%S %p')}", styles["Normal"]),
+            Paragraph(f"<b>Tax Invoice</b><br/>Invoice No: {invoiceNo}<br/>Date: {invoiceDateStr}", styles["Normal"]),
         ]
     ]
     storeTable = Table(storeDetails, colWidths=[3.25 * inch, 3.25 * inch])

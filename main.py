@@ -51,7 +51,7 @@ class CRMWindow(QWidget):
         mainLayout.setSpacing(0)
 
         # Header
-        self.header = Header()
+        self.header = Header(self)
         mainLayout.addWidget(self.header)
 
         # Horizontal content area

@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
     QFrame, QFormLayout, QGroupBox
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QColor, QPalette
+from PySide6.QtGui import QIntValidator, QDoubleValidator
 from dbClient import DbClient
 from customerSelectorDialog import openCustomerSelector
 from productSelectorDialog import openProductSelector
@@ -264,15 +264,21 @@ class MainArea(QWidget):
         self.productNameInput.setMinimumWidth(180)  
         productFormLayout.addWidget(self.productNameInput, 4)  # 40% of product card
         
-        # Quantity with reduced width
+        # Quantity (integers only)
         self.qtyInput = ModernLineEdit("Qty")
-        self.qtyInput.setFixedWidth(70)  
-        productFormLayout.addWidget(self.qtyInput, 1)  # 10% of product card
-        
-        # Price with reduced width
+        self.qtyInput.setFixedWidth(70)
+        self.qtyInput.setValidator(QIntValidator(1, 99999, self))  # only positive integers
+        productFormLayout.addWidget(self.qtyInput, 1)
+
+        # Price (decimal numbers only)
         self.priceInput = ModernLineEdit("Price")
-        self.priceInput.setFixedWidth(90) 
-        productFormLayout.addWidget(self.priceInput, 2)  # 20% of product card
+        self.priceInput.setFixedWidth(90)
+
+        priceValidator = QDoubleValidator(0.0, 999999.99, 2, self)
+        priceValidator.setNotation(QDoubleValidator.StandardNotation)
+        self.priceInput.setValidator(priceValidator)
+
+        productFormLayout.addWidget(self.priceInput, 2)
         
         # Add button with reduced width
         self.checkoutBtn = ModernButton("Add", "success", width=80)
@@ -499,14 +505,19 @@ class MainArea(QWidget):
         
         mainAreaLayout.addWidget(actionWidget)
 
-        # Connect Add Product Button
-        self.checkoutBtn.clicked.connect(
-            lambda: self.addProductRow({
+        self.checkoutBtn.clicked.connect(self.onAddProductClicked)
+
+    # ------------------- Add Product Clicked Handler -------------------
+    def onAddProductClicked(self):
+        try:
+            self.addProductRow({
                 "name": self.productNameInput.text().strip(),
                 "price": float(self.priceInput.text().strip() or 0),
                 "qty": float(self.qtyInput.text().strip() or 1)
             })
-        )
+        except Exception as e:
+            QMessageBox.warning(self, "Invalid Information", "Please check the product details entered.")
+            return
 
     # ------------------- Clear Customer Data -------------------
     def clearCustomerData(self):
@@ -541,6 +552,34 @@ class MainArea(QWidget):
             QMessageBox.warning(self, "Invalid Input", "Quantity and price must be valid numbers.")
             return
 
+        # CHECK IF PRODUCT ALREADY EXISTS → INCREASE QTY
+        for row in range(self.productTable.rowCount()):
+            existingNameItem = self.productTable.item(row, 0)
+            if existingNameItem and existingNameItem.text().strip().lower() == name.lower():
+
+                qty_item = self.productTable.item(row, 1)
+                price_item = self.productTable.item(row, 2)
+                discount_item = self.productTable.item(row, 3)
+
+                try:
+                    existingQty = float(qty_item.text())
+                    unitPrice = float(price_item.text().replace("$", ""))
+                    discount = float(discount_item.text().replace("%", "")) if discount_item else 0
+                except ValueError:
+                    QMessageBox.warning(self, "Invalid Data", "Existing product data is invalid.")
+                    return
+
+                newQty = existingQty + qtyValue
+                qty_item.setText(str(int(newQty)) if newQty.is_integer() else str(newQty))
+
+                total = (unitPrice * newQty) * (1 - discount / 100)
+                self.productTable.item(row, 4).setText(f"${total:.2f}")
+
+                self.updateGrandTotal()
+                self.clearProductFields()
+                return  
+
+        # ADD NEW ROW (IF PRODUCT DOES NOT EXIST)
         total = qtyValue * priceValue
 
         row = self.productTable.rowCount()
@@ -571,7 +610,7 @@ class MainArea(QWidget):
         totalItem.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.productTable.setItem(row, 4, totalItem)
 
-        # Using QLabel which has alignment property
+        # Delete button
         deleteLabel = QLabel("X")
         deleteLabel.setAlignment(Qt.AlignCenter)
         deleteLabel.setFixedHeight(20)
@@ -590,13 +629,10 @@ class MainArea(QWidget):
             }
         """)
         deleteLabel.setCursor(Qt.PointingHandCursor)
-
-        # Make it clickable
         deleteLabel.mousePressEvent = lambda event, r=row: self.deleteRow(r)
 
         self.productTable.setCellWidget(row, 5, deleteLabel)
 
-        # Clear input fields after adding
         self.clearProductFields()
         self.updateGrandTotal()
 
@@ -624,9 +660,38 @@ class MainArea(QWidget):
                 discount_item = QTableWidgetItem("0.0%")
                 self.productTable.setItem(row, 3, discount_item)
 
-            qty = float(qty_item.text()) if qty_item and qty_item.text() else 0
-            price = float(price_item.text().replace("$", "")) if price_item else 0
-            discount = float(discount_item.text().replace("%", "")) if discount_item.text() else 0
+            # -------- Validate Quantity --------
+            try:
+                qty = float(qty_item.text()) if qty_item and qty_item.text() else 0
+            except ValueError:
+                QMessageBox.warning(
+                    self,
+                    "Invalid Quantity",
+                    "Please enter a valid number for quantity."
+                )
+                return
+
+            # -------- Validate Price --------
+            try:
+                price = float(price_item.text().replace("$", "")) if price_item and price_item.text() else 0
+            except ValueError:
+                QMessageBox.warning(
+                    self,
+                    "Invalid Price",
+                    "Please enter a valid number for price."
+                )
+                return
+
+            # -------- Validate Discount --------
+            try:
+                discount = float(discount_item.text().replace("%", "")) if discount_item.text() else 0
+            except ValueError:
+                QMessageBox.warning(
+                    self,
+                    "Invalid Discount",
+                    "Please enter a valid number for discount."
+                )
+                return
 
             total = (price * qty) * (1 - discount / 100)
 
@@ -643,8 +708,13 @@ class MainArea(QWidget):
             self.updateGrandTotal()
 
         except Exception:
-            pass
+            QMessageBox.warning(
+                self,
+                "Invalid Input",
+                "Please enter valid numeric values."
+            )
 
+    # ------------------- Update Grand Total -------------------
     def updateGrandTotal(self):
         total = 0.0
         for row in range(self.productTable.rowCount()):
@@ -656,16 +726,6 @@ class MainArea(QWidget):
 
     # ------------------- Handle Void Sale -------------------
     def handleVoidSale(self):
-        # reply = QMessageBox.question(
-        #     self, 
-        #     "Confirm Void Sale",
-        #     "Are you sure you want to void this sale? All entered data will be cleared.",
-        #     QMessageBox.Yes | QMessageBox.No,
-        #     QMessageBox.No
-        # )
-        
-        # if reply == QMessageBox.No:
-        #     return
 
         # Clear Product Inputs
         self.productNameInput.clear()
@@ -730,7 +790,7 @@ class MainArea(QWidget):
                 QMessageBox.warning(
                     self,
                     "Invalid Product",
-                    f"Missing product name on row {row + 1}."
+                    f"Missing product name for product {row + 1}."
                 )
                 return {"status": "Failed", "saleID": None}
 
@@ -743,7 +803,7 @@ class MainArea(QWidget):
                 QMessageBox.warning(
                     self,
                     "Invalid Quantity",
-                    f"Invalid quantity on row {row + 1}."
+                    f"Invalid quantity for product {row + 1}."
                 )
                 return {"status": "Failed", "saleID": None}
 
@@ -756,7 +816,7 @@ class MainArea(QWidget):
                 QMessageBox.warning(
                     self,
                     "Invalid Price",
-                    f"Invalid price on row {row + 1}."
+                    f"Invalid price for product {row + 1}."
                 )
                 return {"status": "Failed", "saleID": None}
 
@@ -769,7 +829,7 @@ class MainArea(QWidget):
                 QMessageBox.warning(
                     self,
                     "Invalid Discount",
-                    f"Invalid discount on row {row + 1}."
+                    f"Invalid discount for product {row + 1}."
                 )
                 return {"status": "Failed", "saleID": None}
 

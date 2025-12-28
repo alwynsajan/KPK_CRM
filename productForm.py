@@ -176,18 +176,6 @@ class ProductForm(QWidget):
         """)
         main_layout.addWidget(title_label)
 
-        # Description with less margin
-        desc_label = QLabel("Enter product details below. Fields marked with * are required.")
-        desc_label.setStyleSheet("""
-            QLabel {
-                font-size: 13px;
-                color: #718096;
-                margin-bottom: 16px;
-            }
-        """)
-        desc_label.setWordWrap(True)
-        main_layout.addWidget(desc_label)
-
         # Create main card with reduced margins
         card = CardFrame()
         card_layout = QVBoxLayout(card)

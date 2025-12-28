@@ -197,18 +197,6 @@ class CustomerForm(QWidget):
         """)
         main_layout.addWidget(title_label)
 
-        # Description
-        description_label = QLabel("Fill in the customer details below. Fields marked with * are required.")
-        description_label.setStyleSheet("""
-            QLabel {
-                font-size: 14px;
-                color: #718096;
-                margin-bottom: 24px;
-            }
-        """)
-        description_label.setWordWrap(True)
-        main_layout.addWidget(description_label)
-
         # Create main card
         card = CardFrame()
         

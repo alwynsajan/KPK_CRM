@@ -128,7 +128,7 @@ class CreditSalesDialog(QDialog):
         # Modern window styling
         self.setStyleSheet("""
             QDialog {
-                background-color: #F7FAFC;
+                background-color: #E6E6E6;
                 color: #2D3748;
                 font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
             }
@@ -151,22 +151,10 @@ class CreditSalesDialog(QDialog):
                 font-weight: 700;
                 color: #2D3748;
                 padding: 0px;
-                margin-bottom: 4px;
+             
             }
         """)
         main_layout.addWidget(title_label)
-
-        # Description
-        desc_label = QLabel("View and manage sales with payment type 'Credit'. Select a sale from the left to view details.")
-        desc_label.setStyleSheet("""
-            QLabel {
-                font-size: 14px;
-                color: #718096;
-                margin-bottom: 16px;
-            }
-        """)
-        desc_label.setWordWrap(True)
-        main_layout.addWidget(desc_label)
 
         # Create main container with two columns
         container = QWidget()
@@ -197,7 +185,7 @@ class CreditSalesDialog(QDialog):
             
             QListWidget::item {
                 padding: 12px 15px;
-                border-bottom: 1px solid #F7FAFC;
+                border-bottom: 2px solid #F7FAFC;
                 color: #2D3748;
                 font-weight: 400;
                 min-height: 20px;
@@ -392,27 +380,6 @@ class CreditSalesDialog(QDialog):
         
         row = 0
         
-        # Sale ID
-        sale_id_label = QLabel("Sale ID:")
-        sale_id_label.setStyleSheet("""
-            QLabel {
-                font-size: 13px;
-                font-weight: 600;
-                color: #4A5568;
-            }
-        """)
-        customer_grid.addWidget(sale_id_label, row, 0)
-        
-        sale_id_value = QLabel(str(sale['saleID']))
-        sale_id_value.setStyleSheet("""
-            QLabel {
-                font-size: 13px;
-                color: #2D3748;
-            }
-        """)
-        customer_grid.addWidget(sale_id_value, row, 1)
-        row += 1
-        
         # Customer Name
         if sale['customerName']:
             customer_label = QLabel("Customer Name:")
@@ -421,6 +388,7 @@ class CreditSalesDialog(QDialog):
                     font-size: 13px;
                     font-weight: 600;
                     color: #4A5568;
+                    border: none;
                 }
             """)
             customer_grid.addWidget(customer_label, row, 0)
@@ -430,6 +398,7 @@ class CreditSalesDialog(QDialog):
                 QLabel {
                     font-size: 13px;
                     color: #2D3748;
+                    border: none;
                 }
             """)
             customer_grid.addWidget(customer_value, row, 1)
@@ -443,6 +412,7 @@ class CreditSalesDialog(QDialog):
                     font-size: 13px;
                     font-weight: 600;
                     color: #4A5568;
+                    border: none;
                 }
             """)
             customer_grid.addWidget(phone_label, row, 0)
@@ -452,6 +422,7 @@ class CreditSalesDialog(QDialog):
                 QLabel {
                     font-size: 13px;
                     color: #2D3748;
+                    border: none;
                 }
             """)
             customer_grid.addWidget(phone_value, row, 1)
@@ -465,6 +436,7 @@ class CreditSalesDialog(QDialog):
                     font-size: 13px;
                     font-weight: 600;
                     color: #4A5568;
+                    border: none;
                 }
             """)
             customer_grid.addWidget(email_label, row, 0)
@@ -474,6 +446,7 @@ class CreditSalesDialog(QDialog):
                 QLabel {
                     font-size: 13px;
                     color: #2D3748;
+                    border: none;
                 }
             """)
             customer_grid.addWidget(email_value, row, 1)
@@ -487,6 +460,7 @@ class CreditSalesDialog(QDialog):
                     font-size: 13px;
                     font-weight: 600;
                     color: #4A5568;
+                    border: none;
                 }
             """)
             customer_grid.addWidget(address_label, row, 0)
@@ -496,6 +470,7 @@ class CreditSalesDialog(QDialog):
                 QLabel {
                     font-size: 13px;
                     color: #2D3748;
+                    border: none;
                 }
             """)
             address_value.setWordWrap(True)
@@ -510,6 +485,7 @@ class CreditSalesDialog(QDialog):
                     font-size: 13px;
                     font-weight: 600;
                     color: #4A5568;
+                    border: none;
                 }
             """)
             customer_grid.addWidget(state_postcode_label, row, 0)
@@ -520,6 +496,7 @@ class CreditSalesDialog(QDialog):
                 QLabel {
                     font-size: 13px;
                     color: #2D3748;
+                    border: none;
                 }
             """)
             customer_grid.addWidget(state_postcode_value, row, 1)
@@ -533,6 +510,7 @@ class CreditSalesDialog(QDialog):
                     font-size: 13px;
                     font-weight: 600;
                     color: #4A5568;
+                    border: none;
                 }
             """)
             customer_grid.addWidget(note_label, row, 0)
@@ -542,6 +520,7 @@ class CreditSalesDialog(QDialog):
                 QLabel {
                     font-size: 13px;
                     color: #2D3748;
+                    border: none;
                 }
             """)
             note_value.setWordWrap(True)
@@ -636,6 +615,7 @@ class CreditSalesDialog(QDialog):
                     font-size: 15px;
                     font-weight: 600;
                     color: #2F855A;
+                    background-color: #E6E6E6;
                 }
             """)
             total_layout.addWidget(total_label)
@@ -648,6 +628,7 @@ class CreditSalesDialog(QDialog):
                     font-size: 18px;
                     font-weight: 700;
                     color: #2F855A;
+                    background-color: #E6E6E6;
                 }
             """)
             total_layout.addWidget(total_value)

@@ -60,6 +60,8 @@ class Header(QWidget):
             btn = ModernNavButton(name)
             if name == "💳 Credits":
                 btn.clicked.connect(self.openCreditSales)
+            if name == "📊 Sales":
+                btn.clicked.connect(self.openSalesHistory)
             bottomRow.addWidget(btn)
             self.headerBtns.append(btn)
         
@@ -67,6 +69,7 @@ class Header(QWidget):
 
         self.setLayout(headerLayout)
     
+    # ------------------- Open Sales History -------------------
     def openCreditSales(self):
         """Open credit sales dialog"""
         if self.main_window:  # Check if we have a valid parent window
@@ -76,6 +79,14 @@ class Header(QWidget):
             dialog.exec()
         else:
             print("Error: No parent window found for credit sales dialog")
+
+    # ------------------- Open Sales History -------------------
+    def openSalesHistory(self):
+        """Open sales history dialog"""
+        if self.main_window:
+            from salesHistoryDialog import SalesHistoryDialog
+            dialog = SalesHistoryDialog(self.main_window)
+            dialog.exec()
 
 # ------------------- Modern Navigation Button -------------------
 class ModernNavButton(QPushButton):

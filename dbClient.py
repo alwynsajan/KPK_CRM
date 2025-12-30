@@ -497,3 +497,97 @@ class DbClient:
 
 
 
+    def getSalesByMonthYear(self, month, year):
+        """Get all unique dates for a specific month and year from sales"""
+        query = """
+        SELECT DISTINCT DATE(saleDateTime) as saleDate
+        FROM sales
+        WHERE MONTH(saleDateTime) = %s AND YEAR(saleDateTime) = %s
+        ORDER BY saleDate DESC
+        """
+        
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(query, (month, year))
+            dates = cursor.fetchall()
+        except mysql.connector.Error as err:
+            print(f"Database Error: {err}")
+            dates = []
+        finally:
+            cursor.close()
+            conn.close()
+        
+        return dates
+
+    def getSalesByDate(self, date):
+        """Get all sales for a specific date with customer details"""
+        query = """
+        SELECT 
+            s.saleID,
+            s.saleDateTime,
+            s.paymentType,
+            s.note,
+            c.name as customerName,
+            c.address as customerAddress,
+            c.phone as customerPhone,
+            c.state as customerState,
+            c.postcode as customerPostcode,
+            c.email as customerEmail
+        FROM sales s
+        LEFT JOIN customerData c ON s.customerID = c.customerID
+        WHERE DATE(s.saleDateTime) = %s
+        ORDER BY s.saleDateTime DESC
+        """
+        
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(query, (date,))
+            sales = cursor.fetchall()
+            
+            # Get items for each sale
+            for sale in sales:
+                saleID = sale['saleID']
+                items_query = """
+                SELECT productName, cost, quantity
+                FROM saleItems
+                WHERE saleID = %s
+                """
+                cursor.execute(items_query, (saleID,))
+                sale['items'] = cursor.fetchall()
+                sale['total_amount'] = sum(item['cost'] * item['quantity'] for item in sale['items'])
+                
+        except mysql.connector.Error as err:
+            print(f"Database Error: {err}")
+            sales = []
+        finally:
+            cursor.close()
+            conn.close()
+        
+        return sales
+
+    def getUniqueSalesMonths(self):
+        """Get all unique month-year combinations from sales"""
+        query = """
+        SELECT DISTINCT 
+            YEAR(saleDateTime) as year,
+            MONTH(saleDateTime) as month,
+            MONTHNAME(saleDateTime) as month_name
+        FROM sales
+        ORDER BY year DESC, month DESC
+        """
+        
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(query)
+            months = cursor.fetchall()
+        except mysql.connector.Error as err:
+            print(f"Database Error: {err}")
+            months = []
+        finally:
+            cursor.close()
+            conn.close()
+        
+        return months

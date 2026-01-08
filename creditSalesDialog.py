@@ -7,7 +7,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from dbClient import DbClient
-from generatePDF import generateInvoice
+from generatePDF import generateInvoice, printPDF
+
 
 # ------------------- Modern Button -------------------
 class ModernButton(QPushButton):
@@ -281,12 +282,15 @@ class CreditSalesDialog(QDialog):
         action_layout.addStretch()
         
         self.printInvoiceBtn = ModernButton("Print Invoice", "primary", width=160)
+        self.saveInvoiceBtn = ModernButton("Save As PDF", "primary", width=160)
         self.printInvoiceBtn.clicked.connect(self.printInvoice)
-        
+        self.saveInvoiceBtn.clicked.connect(self.saveInvoice)
+
         self.markPaidBtn = ModernButton("Mark as Paid", "success", width=160)
         self.markPaidBtn.clicked.connect(self.markAsPaid)
         
         action_layout.addWidget(self.printInvoiceBtn)
+        action_layout.addWidget(self.saveInvoiceBtn)
         action_layout.addWidget(self.markPaidBtn)
         action_layout.addStretch()
         
@@ -691,6 +695,55 @@ class CreditSalesDialog(QDialog):
                 "Error",
                 f"Failed to mark sale as paid.\n\nError: {response.get('message', 'Unknown error')}"
             )
+    
+    def saveInvoice(self):
+        """Save invoice for selected sale"""
+        if not hasattr(self, 'currentSale'):
+            return
+        
+        sale = self.currentSale
+        
+        # Prepare customer data
+        customerData = {
+            "Name": sale['customerName'] or "",
+            "Address": sale['customerAddress'] or "",
+            "State": sale['customerState'] or "",
+            "Postcode": sale['customerPostcode'] or "",
+            "Phone": sale['customerPhone'] or ""
+        }
+        
+        # Prepare product data
+        productDataForPDF = []
+        for item in sale.get('items', []):
+            productDataForPDF.append({
+                "Name": item['productName'],
+                "Quantity": float(item['quantity']),
+                "Price": float(item['cost'])
+            })
+        
+        # Generate invoice
+        try:
+            filename=generateInvoice(
+                customerData=customerData,
+                productData=productDataForPDF,
+                saleID=sale['saleID'],
+                date=sale['saleDateTime'],
+                saveToFile=True
+            )
+            
+            QMessageBox.information(
+                self,
+                "Invoice Saved",
+                f"Invoice saved successfully in the Invoices folder!\n\nFilename: {filename}"
+            )
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to save invoice.\n\nError: {str(e)}"
+            )
+        
 
     def printInvoice(self):
         """Print invoice for selected sale"""
@@ -719,17 +772,19 @@ class CreditSalesDialog(QDialog):
         
         # Generate invoice
         try:
-            generateInvoice(
+            buffer = generateInvoice(
                 customerData=customerData,
                 productData=productDataForPDF,
                 saleID=sale['saleID'],
-                date=sale['saleDateTime']
+                date=sale['saleDateTime'],
+                saveToFile=False
             )
+            status= printPDF(buffer)
             
             QMessageBox.information(
                 self,
-                "Invoice Generated",
-                f"Invoice generated successfully!"
+                "Print Status",
+                status
             )
             
         except Exception as e:

@@ -583,9 +583,27 @@ class DbClient:
             cursor = conn.cursor(dictionary=True)
             cursor.execute(query)
             months = cursor.fetchall()
+            
+            # If no months found, return current month as default
+            if not months:
+                from datetime import datetime
+                now = datetime.now()
+                months = [{
+                    'year': now.year,
+                    'month': now.month,
+                    'month_name': now.strftime('%B')
+                }]
+                
         except mysql.connector.Error as err:
             print(f"Database Error: {err}")
-            months = []
+            # Return current month on error
+            from datetime import datetime
+            now = datetime.now()
+            months = [{
+                'year': now.year,
+                'month': now.month,
+                'month_name': now.strftime('%B')
+            }]
         finally:
             cursor.close()
             conn.close()

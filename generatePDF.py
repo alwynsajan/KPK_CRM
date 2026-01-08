@@ -1,5 +1,4 @@
 import json
-import datetime
 import os
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import (
@@ -8,23 +7,11 @@ from reportlab.platypus import (
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
+from io import BytesIO
+import subprocess
+import tempfile
 
 CONFIG_FILE = "config.json"
-
-# def getInvoiceNumber():
-#     # Load configuration
-#     with open(CONFIG_FILE, "r") as file:
-#         config = json.load(file)
-    
-#     invoiceNo = config.get("invoiceNumber", 1000)  # Default if not found
-#     newInvoiceNo = invoiceNo + 1
-    
-#     # Update config with new invoice number
-#     config["invoiceNumber"] = newInvoiceNo
-#     with open(CONFIG_FILE, "w") as file:
-#         json.dump(config, file, indent=4)
-    
-#     return invoiceNo
 
 # Function to calculate item prices
 def calculateItemPrices(productData):
@@ -45,15 +32,19 @@ def calculateItemPrices(productData):
     return calculatedItems, subtotal, totalGst, total
 
 # Function to generate invoice
-def generateInvoice(customerData, productData, saleID,date):
+def generateInvoice(customerData, productData, saleID,date, saveToFile):
     invoiceNo = 1000 + saleID
     
-    # Ensure the 'Invoices' directory exists
-    invoicesDir = "Invoices"
-    os.makedirs(invoicesDir, exist_ok=True)
+    # Decide output target
+    if saveToFile:
+        invoicesDir = "Invoices"
+        os.makedirs(invoicesDir, exist_ok=True)
+        invoiceFilename = os.path.join(invoicesDir, f"invoice_{customerData["Name"]}_{invoiceNo}.pdf")
+        pdf = SimpleDocTemplate(invoiceFilename, pagesize=A4)
+    else:
+        buffer = BytesIO()
+        pdf = SimpleDocTemplate(buffer, pagesize=A4)
 
-    invoiceFilename = os.path.join(invoicesDir, f"invoice_{invoiceNo}.pdf")
-    pdf = SimpleDocTemplate(invoiceFilename, pagesize=A4)
     elements = []
     styles = getSampleStyleSheet()
 
@@ -155,5 +146,43 @@ def generateInvoice(customerData, productData, saleID,date):
 
     # Build the PDF
     pdf.build(elements)
-    print(f"Invoice generated: {invoiceFilename}")
+    if saveToFile:
+        print(f"Invoice generated: {invoiceFilename}")
+        return invoiceFilename
+    else:
+        buffer.seek(0)
+        print(f"Invoice generated: {buffer}")
+        return buffer
 
+def printPDF(pdfInput="output.pdf"):
+    """Print a PDF using Adobe Acrobat. Accepts filename or BytesIO buffer."""
+    try:
+        # Load config
+        with open("config.json", "r") as config_file:
+            config = json.load(config_file)
+
+        acrobat_path = config.get(
+            "adobePath",
+            r"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe"
+        )
+
+        # Determine input type
+        if isinstance(pdfInput, BytesIO):
+            # Write buffer to temp PDF
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                tmp.write(pdfInput.read())
+                pdfPath = tmp.name
+        else:
+            pdfPath = pdfInput  # Assume it's a filename
+
+        # Print using Acrobat
+        subprocess.run(
+            [acrobat_path, "/t", pdfPath],
+            check=True
+        )
+
+        print(f"Printing: {pdfPath}")
+        return "Success", "PDF sent to printer."
+
+    except Exception as e:
+        return "Error", f"Failed to print: {e}"

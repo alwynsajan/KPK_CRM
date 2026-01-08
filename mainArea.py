@@ -10,6 +10,7 @@ from dbClient import DbClient
 from customerSelectorDialog import openCustomerSelector
 from productSelectorDialog import openProductSelector
 from generatePDF import generateInvoice
+from generatePDF import printPDF
 from datetime import datetime
 
 # ------------------- Modern Line Edit -------------------
@@ -937,17 +938,18 @@ class MainArea(QWidget):
             })
 
         # Generate Invoice
-        generateInvoice(
+        buffer = generateInvoice(
             customerData=customerData,
             productData=productDataForPDF,
             saleID=status["saleID"],
-            date=datetime.now()
+            date=datetime.now(),
+            saveToFile=False
         )
-
+        status=  printPDF(buffer)
         QMessageBox.information(
             self,
-            "Invoice Generated",
-            "Invoice generated successfully!"
+            "Print Status",
+            status
         )
 
         # Clear Internal Product List

@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QFont
 from dbClient import DbClient
-from generatePDF import generateInvoice
+from generatePDF import generateInvoice,printPDF
 from datetime import datetime
 
 # ------------------- Modern Button -------------------
@@ -253,6 +253,7 @@ class SalesHistoryDialog(QDialog):
         filter_layout.addWidget(year_label)
         
         self.yearCombo = ModernComboBox()
+        self.yearCombo.currentTextChanged.connect(self.updateMonthCombo)
         filter_layout.addWidget(self.yearCombo)
         
         # Load button
@@ -443,20 +444,33 @@ class SalesHistoryDialog(QDialog):
         # Filter months for selected year
         year_months = [m for m in months if m['year'] == selected_year]
         
-        # If no months for selected year, use current month
+        # If no months for selected year, create a list of all months with "No Data" flag
         if not year_months:
-            year_months = [{
-                'year': self.current_year,
-                'month': self.current_month,
-                'month_name': self.current_date.strftime('%B')
-            }]
+            # Create a list of all months with no data flag
+            import calendar
+            year_months = []
+            for month_num in range(1, 13):
+                month_name = calendar.month_name[month_num]
+                year_months.append({
+                    'year': selected_year,
+                    'month': month_num,
+                    'month_name': month_name,
+                    'no_data': True  # Flag to indicate no sales data
+                })
+        else:
+            # Add flag for months with data
+            for month in year_months:
+                month['no_data'] = False
         
         # Sort months in descending order
         year_months.sort(key=lambda x: x['month'], reverse=True)
         
         self.monthCombo.clear()
         for month_data in year_months:
-            display_text = f"{month_data['month_name']}"
+            if month_data.get('no_data', False):
+                display_text = f"{month_data['month_name']} (No Data)"
+            else:
+                display_text = f"{month_data['month_name']}"
             self.monthCombo.addItem(display_text, month_data['month'])
         
         # Select current month if available
@@ -911,6 +925,11 @@ class SalesHistoryDialog(QDialog):
         self.printInvoiceBtn = ModernButton("Print Invoice", "primary", width=160)
         self.printInvoiceBtn.clicked.connect(lambda: self.printInvoice(sale))
         buttons_layout.addWidget(self.printInvoiceBtn)
+
+        # Save As PDF button 
+        self.savePDFBtn = ModernButton("Save As PDF", "secondary", width=160)
+        self.savePDFBtn.clicked.connect(lambda: self.saveAsPDF(sale))
+        buttons_layout.addWidget(self.savePDFBtn)
         
         # Only show mark as paid for credit sales
         if sale['paymentType'].lower() == 'credit':
@@ -924,6 +943,49 @@ class SalesHistoryDialog(QDialog):
         self.detailsContainerLayout.addStretch()
         
         self.detailsCard.show()
+
+    def saveAsPDF(self, sale):
+        """Save invoice as PDF for selected sale"""
+        # Prepare customer data
+        customerData = {
+            "Name": sale['customerName'] or "",
+            "Address": sale['customerAddress'] or "",
+            "State": sale['customerState'] or "",
+            "Postcode": sale['customerPostcode'] or "",
+            "Phone": sale['customerPhone'] or ""
+        }
+        
+        # Prepare product data
+        productDataForPDF = []
+        for item in sale.get('items', []):
+            productDataForPDF.append({
+                "Name": item['productName'],
+                "Quantity": float(item['quantity']),
+                "Price": float(item['cost'])
+            })
+        
+        # Generate invoice
+        try:
+            filename = generateInvoice(
+                customerData=customerData,
+                productData=productDataForPDF,
+                saleID=sale['saleID'],
+                date=sale['saleDateTime'],
+                saveToFile=True
+            )
+            
+            QMessageBox.information(
+                self,
+                "Invoice Saved",
+                f"Invoice saved successfully in the Invoices folder!\n\nFilename: {filename}"
+            )
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Failed to generate invoice.\n\nError: {str(e)}"
+            )
 
     def printInvoice(self, sale):
         """Print invoice for selected sale"""
@@ -941,23 +1003,26 @@ class SalesHistoryDialog(QDialog):
         for item in sale.get('items', []):
             productDataForPDF.append({
                 "Name": item['productName'],
-                "Quantity": item['quantity'],
-                "Price": item['cost']
+                "Quantity": float(item['quantity']),
+                "Price": float(item['cost'])
             })
         
         # Generate invoice
         try:
-            pdfPath = generateInvoice(
+            buffer = generateInvoice(
                 customerData=customerData,
                 productData=productDataForPDF,
                 saleID=sale['saleID'],
-                date=sale['saleDateTime']
+                date=sale['saleDateTime'],
+                saveToFile=False
             )
+            
+            status= printPDF(buffer)
             
             QMessageBox.information(
                 self,
-                "Invoice Generated",
-                f"Invoice generated successfully!\n\nSaved to: {pdfPath}"
+                "Print Status",
+                status
             )
             
         except Exception as e:

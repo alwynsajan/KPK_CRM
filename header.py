@@ -54,7 +54,7 @@ class Header(QWidget):
         bottomRow.addStretch()
 
         # Navigation buttons with contrast
-        btnNames = ["📊 Sales", "💳 Credits", "📤 Add Pdt Details"]
+        btnNames = ["📊 Sales", "💳 Credits", "📤 Import Pdt Data"]
         self.headerBtns = []
         
         for name in btnNames:
@@ -63,7 +63,7 @@ class Header(QWidget):
                 btn.clicked.connect(self.openCreditSales)
             if name == "📊 Sales":
                 btn.clicked.connect(self.openSalesHistory)
-            if name == "📤 Add Pdt Details":
+            if name == "📤 Import Pdt Data":
                 btn.clicked.connect(self.openCSVImport)
             bottomRow.addWidget(btn)
             self.headerBtns.append(btn)

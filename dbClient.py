@@ -159,7 +159,7 @@ class DbClient:
             conn = self.connectToDB()
             cursor = conn.cursor()
             cursor.execute(query, (
-                productData["productBarCode"],
+                str(productData["productBarCode"]),
                 productData["name"],
                 productData["price"],
                 productData["pdtType"]
@@ -655,3 +655,30 @@ class DbClient:
             conn.close()
         
         return months
+    
+    def getProductByBarcode(self, barcode):
+        """Get product details by barcode"""
+        query = """
+        SELECT productID, productBarCode, name, price, pdtType 
+        FROM productData 
+        WHERE productBarCode = %s
+        """
+        
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(query, (str(barcode),))
+            product_data = cursor.fetchone()
+            
+        except Exception as e:
+            print(f"Error getting product by barcode: {e}")
+            product_data = None
+            
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except:
+                pass
+        
+        return product_data

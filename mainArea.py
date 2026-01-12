@@ -12,6 +12,7 @@ from productSelectorDialog import openProductSelector
 from generatePDF import generateInvoice
 from generatePDF import printPDF
 from datetime import datetime
+from PySide6.QtCore import QTimer
 
 # ------------------- Modern Line Edit -------------------
 class ModernLineEdit(QLineEdit):
@@ -203,6 +204,11 @@ class MainArea(QWidget):
         self.finalProductList = finalProductList or []
         self.sideBar = sidebar
 
+        self.barcode_buffer = ""
+        self.barcode_timer = QTimer()
+        self.barcode_timer.setSingleShot(True)
+        self.barcode_timer.timeout.connect(self.processBarcode)
+
         # Main layout with stretch factors
         mainAreaLayout = QVBoxLayout(self)
         mainAreaLayout.setContentsMargins(20, 15, 20, 15)
@@ -264,6 +270,7 @@ class MainArea(QWidget):
         self.productNameInput = ModernLineEdit("Product name")
         self.productNameInput.setMinimumWidth(180)  
         productFormLayout.addWidget(self.productNameInput, 4)  # 40% of product card
+        self.productNameInput.textChanged.connect(self.onProductNameTextChanged)
         
         # Quantity (integers only)
         self.qtyInput = ModernLineEdit("Qty")
@@ -535,6 +542,76 @@ class MainArea(QWidget):
         self.productNameInput.clear()
         self.qtyInput.clear()
         self.priceInput.clear()
+
+    def onProductNameTextChanged(self, text):
+        """Handle text changes in product name input for barcode detection"""
+        # If text is empty, reset barcode buffer
+        if not text:
+            self.barcode_buffer = ""
+            return
+        
+        # If text is numeric, add to buffer and start timer
+        if text.isdigit():
+            self.barcode_buffer = text
+            # Restart timer - when timer completes, we'll check if it's a barcode
+            self.barcode_timer.start(200)  # 200ms delay
+        else:
+            # If non-numeric input, it's manual typing, clear buffer
+            self.barcode_buffer = ""
+
+    def processBarcode(self):
+        """Process the barcode after typing delay"""
+        if self.barcode_buffer and len(self.barcode_buffer) >= 6:
+            try:
+                # Try to find product by barcode
+                db = DbClient()
+                product_data = db.getProductByBarcode(int(self.barcode_buffer))
+                
+                if product_data:
+                    # Get quantity from qty input or default to 1
+                    qty_text = self.qtyInput.text().strip()
+                    if not qty_text:
+                        qty = 1.0
+                        self.qtyInput.setText("1")  # Set default quantity
+                    else:
+                        qty = float(qty_text)
+                    
+                    # Add product to table
+                    self.addProductRow({
+                        "name": product_data.get("name", "Unknown Product"),
+                        "price": float(product_data.get("price", 0)),
+                        "qty": qty
+                    })
+                    
+                    # Clear the input fields after adding
+                    self.productNameInput.clear()
+                    self.qtyInput.clear()
+                    self.priceInput.clear()
+                    
+                    # Show success message
+                    # QMessageBox.information(
+                    #     self,
+                    #     "Product Added",
+                    #     f"'{product_data.get('name')}' added to cart."
+                    # )
+                else:
+                    # Product not found
+                    QMessageBox.warning(
+                        self,
+                        "Product Not Found",
+                        f"No product found with barcode: {self.barcode_buffer}\n\nPlease enter product details manually."
+                    )
+                    # Don't clear the input - let user see what they typed
+                    self.productNameInput.setFocus()
+                    self.productNameInput.clear()
+                    
+            except Exception as e:
+                print(f"Error processing barcode: {e}")
+                # If error, just ignore - user can continue typing
+                pass
+            
+            # Clear buffer after processing
+            self.barcode_buffer = ""
 
     # ------------------- Add Product Logic -------------------
     def addProductRow(self, productData):

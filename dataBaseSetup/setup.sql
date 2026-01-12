@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS customerData (
 CREATE TABLE IF NOT EXISTS productData (
     productID INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    productBarCode INT,
+    productBarCode VARCHAR(50),
     pdtType VARCHAR(100),
     price DECIMAL(10,2) NOT NULL
 );

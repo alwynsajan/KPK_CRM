@@ -321,7 +321,7 @@ class CSVImportDialog(QDialog):
             try:
                 # Prepare product data
                 product_data = {
-                    "productBarCode": int(row['productBarCode']),
+                    "productBarCode": str(row['productBarCode']),
                     "name": row['name'],
                     "price": float(row['price']),
                     "pdtType": row.get('pdtType', '')

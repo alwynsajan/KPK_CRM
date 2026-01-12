@@ -151,14 +151,60 @@ class DbClient:
     def addProductData(self, productData):
         """Insert new product into the productData table"""
         query = """
-        INSERT INTO productData (productBarCode, name, price)
-        VALUES (%s, %s, %s)
+        INSERT INTO productData (productBarCode, name, price, pdtType)
+        VALUES (%s, %s, %s, %s)
         """
-        return self.executeQuery(query, (
-            productData["productBarCode"],
-            productData["name"],
-            productData["price"]
-        ))
+        
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor()
+            cursor.execute(query, (
+                productData["productBarCode"],
+                productData["name"],
+                productData["price"],
+                productData["pdtType"]
+            ))
+            conn.commit()
+            
+            # Get the inserted ID
+            inserted_id = cursor.lastrowid
+            
+            response = {
+                "status": "Success",
+                "message": "Product added successfully",
+                "productID": inserted_id
+            }
+            
+        except mysql.connector.Error as err:
+            print(f"Database Error: {err}")
+            
+            # Check for duplicate barcode error
+            if err.errno == 1062:  # Duplicate entry error code
+                response = {
+                    "status": "Failed", 
+                    "message": f"Product with barcode {productData['productBarCode']} already exists"
+                }
+            else:
+                response = {
+                    "status": "Failed",
+                    "message": f"Database error: {err}"
+                }
+            
+        except Exception as e:
+            print(f"Unexpected Error: {e}")
+            response = {
+                "status": "Failed",
+                "message": f"Unexpected error: {e}"
+            }
+            
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except:
+                pass  # Ignore errors during cleanup
+        
+        return response
 
 
     def getAllProducts(self):

@@ -1,6 +1,7 @@
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QSizePolicy
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette, QColor
+from csvImportDialog import CSVImportDialog
 
 
 class Header(QWidget):
@@ -53,7 +54,7 @@ class Header(QWidget):
         bottomRow.addStretch()
 
         # Navigation buttons with contrast
-        btnNames = ["📊 Sales", "💳 Credits", "📤 Upload"]
+        btnNames = ["📊 Sales", "💳 Credits", "📤 Add Pdt Details"]
         self.headerBtns = []
         
         for name in btnNames:
@@ -62,6 +63,8 @@ class Header(QWidget):
                 btn.clicked.connect(self.openCreditSales)
             if name == "📊 Sales":
                 btn.clicked.connect(self.openSalesHistory)
+            if name == "📤 Add Pdt Details":
+                btn.clicked.connect(self.openCSVImport)
             bottomRow.addWidget(btn)
             self.headerBtns.append(btn)
         
@@ -88,6 +91,11 @@ class Header(QWidget):
             dialog = SalesHistoryDialog(self.main_window)
             dialog.exec()
 
+    def openCSVImport(self):
+        """Open CSV import dialog"""
+        dialog = CSVImportDialog(self)
+        dialog.exec()
+
 # ------------------- Modern Navigation Button -------------------
 class ModernNavButton(QPushButton):
     def __init__(self, text):
@@ -104,7 +112,7 @@ class ModernNavButton(QPushButton):
                 padding: 6px 12px;
                 font-size: 12px;
                 font-weight: 600;
-                min-width: 90px;
+                min-width: 105px;
             }
             QPushButton:hover {
                 background-color: rgba(52, 152, 219, 1.0);
@@ -113,3 +121,5 @@ class ModernNavButton(QPushButton):
                 background-color: #21618C;
             }
         """)
+
+    

@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 import csv
 import os
+from dbClient import DbClient
 
 # ------------------- Modern Button -------------------
 class ModernButton(QPushButton):

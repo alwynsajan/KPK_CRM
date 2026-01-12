@@ -192,6 +192,13 @@ class ProductForm(QWidget):
         self.nameInput = ModernLineEdit("Enter product name")
         card_layout.addWidget(self.nameInput)
 
+        
+        # --- Product Type ---
+        card_layout.addWidget(ModernLabel("Product Type", required=True))
+        self.typeInput = ModernLineEdit("Enter product type")
+        card_layout.addWidget(self.typeInput)
+
+
         # --- Price ---
         card_layout.addWidget(ModernLabel("Price", required=True))
         
@@ -243,6 +250,7 @@ class ProductForm(QWidget):
     def clearFields(self):
         self.barcodeInput.clear()
         self.nameInput.clear()
+        self.typeInput.clear()
         self.priceInput.clear()
         
         # Set focus to name input for better UX
@@ -251,6 +259,7 @@ class ProductForm(QWidget):
     def addProduct(self):
         barcode = self.barcodeInput.text().strip()
         name = self.nameInput.text().strip()
+        pdtType=self.typeInput.text().strip()
         price_text = self.priceInput.text().strip()
 
         # Validation
@@ -370,6 +379,7 @@ class ProductForm(QWidget):
         response = db.addProductData({
             "productBarCode": barcode,
             "name": name,
+            "pdtType":pdtType,
             "price": price
         })
 

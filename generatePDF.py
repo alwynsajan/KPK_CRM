@@ -156,8 +156,22 @@ def generateInvoice(customerData, productData, saleID,date, saveToFile):
         print(f"Invoice generated: {buffer}")
         return buffer
 
+
 def printPDF(pdfInput):
+    """
+    Prints a PDF using SumatraPDF silently.
+    Works with BytesIO or file paths.
+    """
     try:
+        # Load config
+        with open(CONFIG_FILE, "r") as f:
+            config = json.load(f)
+
+        SUMATRA_PATH = config.get("sumatraPath")
+        if not SUMATRA_PATH:
+            return {"status": "Error", "message": "SumatraPDF path not found in config.json"}
+        
+        # Save BytesIO to temp file if needed
         if isinstance(pdfInput, BytesIO):
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                 tmp.write(pdfInput.read())
@@ -165,24 +179,21 @@ def printPDF(pdfInput):
         else:
             pdfPath = pdfInput
 
+        # Get default printer
         printer = win32print.GetDefaultPrinter()
 
-        win32api.ShellExecute(
-            0,
-            "print",
-            pdfPath,
-            None,
-            ".",
-            0
-        )
+        # SumatraPDF silent print command
+        cmd = [
+            SUMATRA_PATH,
+            "-print-to", printer,
+            "-silent",
+            pdfPath
+        ]
 
-        return {
-            "status": "Success",
-            "message": f"Invoice sent to printer ({printer})"
-        }
+        # Run the command
+        subprocess.run(cmd, check=True)
+
+        return {"status": "Success", "message": f"Invoice sent to {printer}"}
 
     except Exception as e:
-        return {
-            "status": "Error",
-            "message": str(e)
-        }
+        return {"status": "Error", "message": str(e)}

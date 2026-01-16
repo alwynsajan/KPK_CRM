@@ -1023,14 +1023,14 @@ class MainArea(QWidget):
             saveToFile=False
         )
         status=  printPDF(buffer)
-        QMessageBox.information(
-            self,
-            "Print Status",
-            status
-        )
+        # Show message
+        if status["status"] == "Success":
+            QMessageBox.information(self, "Print Status", status["message"])
 
-        # Clear Internal Product List
-        self.handleVoidSale()
+            # Clear sale ONLY if print succeeded
+            self.handleVoidSale()
+        else:
+            QMessageBox.critical(self, "Print Failed", status["message"])
 
     # ------------------- Refresh Customer Sidebar -------------------
     def refreshCustomerSidebar(self):

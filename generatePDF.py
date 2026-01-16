@@ -10,6 +10,8 @@ from reportlab.lib.units import inch
 from io import BytesIO
 import subprocess
 import tempfile
+import win32print
+import win32api
 
 CONFIG_FILE = "config.json"
 
@@ -154,35 +156,33 @@ def generateInvoice(customerData, productData, saleID,date, saveToFile):
         print(f"Invoice generated: {buffer}")
         return buffer
 
-def printPDF(pdfInput="output.pdf"):
-    """Print a PDF using Adobe Acrobat. Accepts filename or BytesIO buffer."""
+def printPDF(pdfInput):
     try:
-        # Load config
-        with open("config.json", "r") as config_file:
-            config = json.load(config_file)
-
-        acrobat_path = config.get(
-            "adobePath",
-            r"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe"
-        )
-
-        # Determine input type
         if isinstance(pdfInput, BytesIO):
-            # Write buffer to temp PDF
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                 tmp.write(pdfInput.read())
                 pdfPath = tmp.name
         else:
-            pdfPath = pdfInput  # Assume it's a filename
+            pdfPath = pdfInput
 
-        # Print using Acrobat
-        subprocess.run(
-            [acrobat_path, "/t", pdfPath],
-            check=True
+        printer = win32print.GetDefaultPrinter()
+
+        win32api.ShellExecute(
+            0,
+            "print",
+            pdfPath,
+            None,
+            ".",
+            0
         )
 
-        print(f"Printing: {pdfPath}")
-        return "Success", "PDF sent to printer."
+        return {
+            "status": "Success",
+            "message": f"Invoice sent to printer ({printer})"
+        }
 
     except Exception as e:
-        return "Error", f"Failed to print: {e}"
+        return {
+            "status": "Error",
+            "message": str(e)
+        }

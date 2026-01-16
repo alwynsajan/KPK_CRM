@@ -1019,11 +1019,13 @@ class SalesHistoryDialog(QDialog):
             
             status= printPDF(buffer)
             
-            QMessageBox.information(
-                self,
-                "Print Status",
-                status
-            )
+            # Show message
+            if status["status"] == "Success":
+                QMessageBox.information(self, "Print Status", status["message"])
+
+            else:
+                QMessageBox.critical(self, "Print Failed", status["message"])
+            
             
         except Exception as e:
             QMessageBox.critical(

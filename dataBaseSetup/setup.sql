@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS customerData (
 -- ===============================
 CREATE TABLE IF NOT EXISTS productData (
     productID INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL UNIQUE,
     productBarCode VARCHAR(50),
     pdtType VARCHAR(100),
     price DECIMAL(10,2) NOT NULL
@@ -51,13 +51,17 @@ CREATE TABLE IF NOT EXISTS sales (
 CREATE TABLE IF NOT EXISTS saleItems (
     saleItemID INT AUTO_INCREMENT PRIMARY KEY,
     saleID INT NOT NULL,
-    productName VARCHAR(255) NOT NULL,
-    cost DECIMAL(10,2) NOT NULL,
+    productID INT NOT NULL,
+    unitPrice DECIMAL(10,2) NOT NULL,
     quantity INT NOT NULL,
 
     FOREIGN KEY (saleID)
         REFERENCES sales(saleID)
-        ON DELETE CASCADE
+        ON DELETE CASCADE,
+
+    FOREIGN KEY (productID)
+        REFERENCES productData(productID)
+        ON DELETE RESTRICT
 );
 
 -- ===============================

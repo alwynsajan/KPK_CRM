@@ -261,22 +261,22 @@ class DbClient:
             response["message"] = "No products or payment type selected."
             return response
 
+        conn = None
+        cursor = None
+
         try:
             conn = self.connectToDB()
             cursor = conn.cursor()
 
             # ------------------ Insert Sale ------------------
             customerID = saleData.get("customerID") or None
-
-            saleQuery = """
-                INSERT INTO sales (saleDateTime, customerID, paymentType, note)
-                VALUES (%s, %s, %s, %s)
-            """
-
             saleDateTime = saleData.get("saleDateTime") or datetime.now()
 
             cursor.execute(
-                saleQuery,
+                """
+                INSERT INTO sales (saleDateTime, customerID, paymentType, note)
+                VALUES (%s, %s, %s, %s)
+                """,
                 (
                     saleDateTime,
                     customerID,
@@ -287,25 +287,49 @@ class DbClient:
 
             saleID = cursor.lastrowid
 
+            # ------------------ Resolve productID by UNIQUE name ------------------
+            productIdCache = {}
+
+            for item in saleData["items"]:
+                productName = item.get("name")
+
+                if not productName:
+                    raise ValueError("Sale item missing product name")
+
+                if productName not in productIdCache:
+                    cursor.execute(
+                        "SELECT productID FROM productData WHERE name = %s",
+                        (productName,)
+                    )
+                    row = cursor.fetchone()
+
+                    if not row:
+                        raise ValueError(f"Product not found: {productName}")
+
+                    productIdCache[productName] = row[0]
+
             # ------------------ Insert Sale Items ------------------
             itemQuery = """
-                INSERT INTO saleItems (saleID, productName, cost, quantity)
+                INSERT INTO saleItems (saleID, productID, unitPrice, quantity)
                 VALUES (%s, %s, %s, %s)
             """
 
-            totalSaleAmount = 0
+            totalSaleAmount = 0.0
 
             for item in saleData["items"]:
+                productName = item["name"]
+                productID = productIdCache[productName]
+
                 price = float(item.get("price", 0))
                 discount = float(item.get("discount", 0))
                 quantity = int(item.get("quantity", 1))
 
-                cost = price * (1 - discount / 100)
-                totalSaleAmount += cost * quantity
+                unitPrice = price * (1 - discount / 100)
+                totalSaleAmount += unitPrice * quantity
 
                 cursor.execute(
                     itemQuery,
-                    (saleID, item["name"], cost, quantity)
+                    (saleID, productID, unitPrice, quantity)
                 )
 
             # ------------------ Update Per-Day Sales ------------------
@@ -336,21 +360,24 @@ class DbClient:
                 "saleID": saleID
             }
 
-        except mysql.connector.Error as err:
-            conn.rollback()
+        except Exception as err:
+            if conn:
+                conn.rollback()
             response = {
                 "status": "Failed",
-                "message": f"Database error: {err}",
+                "message": str(err),
                 "saleID": None
             }
 
         finally:
-            cursor.close()
-            conn.close()
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
 
         return response
 
-    
+
     def getSalesByCustomerID(self, customerID):
         """Retrieve all sales records for a given customer name."""
         query = """
@@ -377,21 +404,21 @@ class DbClient:
     def getCreditSales(self):
         """Get all sales with payment type 'Credit'"""
         query = """
-        SELECT 
-            s.saleID,
-            s.saleDateTime,
-            s.paymentType,
-            s.note,
-            c.name as customerName,
-            c.address as customerAddress,
-            c.phone as customerPhone,
-            c.state as customerState,
-            c.postcode as customerPostcode,
-            c.email as customerEmail
-        FROM sales s
-        LEFT JOIN customerData c ON s.customerID = c.customerID
-        WHERE s.paymentType = 'Credit'
-        ORDER BY s.saleDateTime DESC, s.saleID DESC
+            SELECT 
+                s.saleID,
+                s.saleDateTime,
+                s.paymentType,
+                s.note,
+                c.name AS customerName,
+                c.address AS customerAddress,
+                c.phone AS customerPhone,
+                c.state AS customerState,
+                c.postcode AS customerPostcode,
+                c.email AS customerEmail
+            FROM sales s
+            LEFT JOIN customerData c ON s.customerID = c.customerID
+            WHERE s.paymentType = 'Credit'
+            ORDER BY s.saleDateTime DESC, s.saleID DESC
         """
         
         try:
@@ -404,9 +431,13 @@ class DbClient:
             for sale in sales:
                 saleID = sale['saleID']
                 items_query = """
-                SELECT productName, cost, quantity
-                FROM saleItems
-                WHERE saleID = %s
+                    SELECT 
+                        p.name AS productName,
+                        si.unitPrice AS cost,
+                        si.quantity
+                    FROM saleItems si
+                    JOIN productData p ON si.productID = p.productID
+                    WHERE si.saleID = %s
                 """
                 cursor.execute(items_query, (saleID,))
                 sale['items'] = cursor.fetchall()
@@ -419,6 +450,7 @@ class DbClient:
             conn.close()
         
         return sales
+
 
     def updatePaymentType(self, saleID, paymentType):
         """Update payment type for a sale"""
@@ -449,9 +481,14 @@ class DbClient:
     # ------------------- Get Customer Sales History -------------------
     def getCustomerSalesHistory(self, customerID):
         query = """
-            SELECT s.saleDateTime, si.productName, si.quantity, si.cost
+            SELECT 
+                s.saleDateTime,
+                p.name AS productName,
+                si.quantity,
+                si.unitPrice
             FROM sales s
             JOIN saleItems si ON s.saleID = si.saleID
+            JOIN productData p ON si.productID = p.productID
             WHERE s.customerID = %s
             ORDER BY s.saleDateTime DESC
         """
@@ -471,6 +508,7 @@ class DbClient:
             conn.close()
 
         return result
+
 
     # ------------------- Update Customer Details -------------------
     def updateCustomerData(self, customerID, customerData):
@@ -569,21 +607,21 @@ class DbClient:
     def getSalesByDate(self, date):
         """Get all sales for a specific date with customer details"""
         query = """
-        SELECT 
-            s.saleID,
-            s.saleDateTime,
-            s.paymentType,
-            s.note,
-            c.name as customerName,
-            c.address as customerAddress,
-            c.phone as customerPhone,
-            c.state as customerState,
-            c.postcode as customerPostcode,
-            c.email as customerEmail
-        FROM sales s
-        LEFT JOIN customerData c ON s.customerID = c.customerID
-        WHERE DATE(s.saleDateTime) = %s
-        ORDER BY s.saleDateTime DESC
+            SELECT 
+                s.saleID,
+                s.saleDateTime,
+                s.paymentType,
+                s.note,
+                c.name AS customerName,
+                c.address AS customerAddress,
+                c.phone AS customerPhone,
+                c.state AS customerState,
+                c.postcode AS customerPostcode,
+                c.email AS customerEmail
+            FROM sales s
+            LEFT JOIN customerData c ON s.customerID = c.customerID
+            WHERE DATE(s.saleDateTime) = %s
+            ORDER BY s.saleDateTime DESC
         """
         
         try:
@@ -596,22 +634,32 @@ class DbClient:
             for sale in sales:
                 saleID = sale['saleID']
                 items_query = """
-                SELECT productName, cost, quantity
-                FROM saleItems
-                WHERE saleID = %s
+                    SELECT 
+                        p.name AS productName,
+                        si.unitPrice AS cost,
+                        si.quantity
+                    FROM saleItems si
+                    JOIN productData p ON si.productID = p.productID
+                    WHERE si.saleID = %s
                 """
                 cursor.execute(items_query, (saleID,))
                 sale['items'] = cursor.fetchall()
-                sale['total_amount'] = sum(item['cost'] * item['quantity'] for item in sale['items'])
-                
+
+                # total = unitPrice * quantity
+                sale['total_amount'] = sum(
+                    item['cost'] * item['quantity']
+                    for item in sale['items']
+                )
+                    
         except mysql.connector.Error as err:
             print(f"Database Error: {err}")
             sales = []
         finally:
             cursor.close()
             conn.close()
-        
+            
         return sales
+
 
     def getUniqueSalesMonths(self):
         """Get all unique month-year combinations from sales"""

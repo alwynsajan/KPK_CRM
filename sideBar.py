@@ -378,7 +378,8 @@ class SideBar(QWidget):
             salesTable.insertRow(row)
             
             # Date column
-            dateItem = QTableWidgetItem(str(date))
+            dateItem = QTableWidgetItem(date.strftime("%d/%m/%Y"))
+
             dateItem.setBackground(QColor("#ffffff"))
             salesTable.setItem(row, 0, dateItem)
             

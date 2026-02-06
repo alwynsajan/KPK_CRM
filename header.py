@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushBu
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette, QColor
 from csvImportDialog import CSVImportDialog
+from reportsDialog import ReportsDialog
 
 
 class Header(QWidget):
@@ -54,7 +55,7 @@ class Header(QWidget):
         bottomRow.addStretch()
 
         # Navigation buttons with contrast
-        btnNames = ["📊 Sales", "💳 Credits", "📤 Import Pdt Data"]
+        btnNames = [ "📈 Reports","📊 Sales", "💳 Credits", "📤 Import Pdt Data"]
         self.headerBtns = []
         
         for name in btnNames:
@@ -65,6 +66,8 @@ class Header(QWidget):
                 btn.clicked.connect(self.openSalesHistory)
             if name == "📤 Import Pdt Data":
                 btn.clicked.connect(self.openCSVImport)
+            elif name == "📈 Reports":
+                btn.clicked.connect(self.openReportsDialog)
             bottomRow.addWidget(btn)
             self.headerBtns.append(btn)
         
@@ -94,6 +97,10 @@ class Header(QWidget):
     def openCSVImport(self):
         """Open CSV import dialog"""
         dialog = CSVImportDialog(self)
+        dialog.exec()
+
+    def openReportsDialog(self):
+        dialog = ReportsDialog(self.main_window)
         dialog.exec()
 
 # ------------------- Modern Navigation Button -------------------

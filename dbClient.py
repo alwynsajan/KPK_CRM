@@ -274,14 +274,15 @@ class DbClient:
 
             cursor.execute(
                 """
-                INSERT INTO sales (saleDateTime, customerID, paymentType, note)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO sales (saleDateTime, customerID, paymentType, note, official)
+                VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
                     saleDateTime,
                     customerID,
                     saleData["paymentType"],
-                    saleData.get("note")
+                    saleData.get("note"),
+                    saleData.get("official", 0)
                 )
             )
 

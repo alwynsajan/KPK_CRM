@@ -462,6 +462,30 @@ class MainArea(QWidget):
         paymentCard.layout.addLayout(paymentOptionsLayout)
         bottomRow.addWidget(paymentCard, 1)
 
+        # ------------------- Official Card -------------------
+        officialCard = CardFrame("Sale Type")
+
+        officialLayout = QHBoxLayout()
+        officialLayout.setSpacing(12)
+
+        self.officialToggle = ModernRadioButton("Official")
+        self.notOfficialToggle = ModernRadioButton("Not Official")
+
+        # Default selection
+        self.notOfficialToggle.setChecked(True)
+
+        self.officialGroup = QButtonGroup(self)
+        self.officialGroup.setExclusive(True)
+        self.officialGroup.addButton(self.officialToggle)
+        self.officialGroup.addButton(self.notOfficialToggle)
+
+        officialLayout.addWidget(self.officialToggle)
+        officialLayout.addWidget(self.notOfficialToggle)
+        officialLayout.addStretch()
+
+        officialCard.layout.addLayout(officialLayout)
+        bottomRow.addWidget(officialCard, 1)
+
         # Total Card 
         totalCard = CardFrame("Grand Total")
         totalCard.layout.setAlignment(Qt.AlignCenter)
@@ -938,11 +962,14 @@ class MainArea(QWidget):
             return {"status": "Failed", "saleID": None}
 
         # ------------------ Prepare Sale Data ------------------
+        isOfficial = 1 if self.officialToggle.isChecked() else 0
+
         saleData = {
             "saleDateTime": datetime.now(),
             "customerID": self.selectedCustomerDetails.get("customerID"),
             "paymentType": checkedButton.text(),
             "note": self.notesInput.text().strip(),
+            "official": isOfficial,
             "items": self.finalProductList
         }
 

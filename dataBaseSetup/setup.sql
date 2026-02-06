@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS sales (
     customerID INT,
     paymentType VARCHAR(50) NOT NULL,
     note TEXT,
+    official TINYINT(1) NOT NULL DEFAULT 0,
 
     FOREIGN KEY (customerID)
         REFERENCES customerData(customerID)

@@ -1,5 +1,5 @@
 @echo off
 echo Setting up MariaDB database...
-mysql -u root -p1234 < setup.sql
+"C:\Program Files\MariaDB 12.1\bin\mysql.exe" -u root -p1234 < setup.sql
 echo Database setup completed!
 pause

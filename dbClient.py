@@ -613,6 +613,7 @@ class DbClient:
                 s.saleDateTime,
                 s.paymentType,
                 s.note,
+                s.official,
                 c.name AS customerName,
                 c.address AS customerAddress,
                 c.phone AS customerPhone,
@@ -731,3 +732,19 @@ class DbClient:
                 pass
         
         return product_data
+    
+    def updateSaleOfficialStatus(self, saleID, official):
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE sales SET official = %s WHERE saleID = %s",
+                (int(official), saleID)
+            )
+            conn.commit()
+            return {"status": "Success"}
+        except Exception as e:
+            return {"status": "Failed", "message": str(e)}
+        finally:
+            cursor.close()
+            conn.close()

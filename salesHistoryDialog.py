@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QListWidget, QPushButton,
     QLabel, QWidget, QHBoxLayout, QMessageBox, QFrame,
     QListWidgetItem, QGridLayout, QTableWidget,
-    QTableWidgetItem, QHeaderView, QComboBox, QScrollArea,
+    QTableWidgetItem, QHeaderView, QComboBox, QScrollArea,QCheckBox,
     QSizePolicy
 )
 from PySide6.QtCore import Qt, QDate
@@ -702,7 +702,50 @@ class SalesHistoryDialog(QDialog):
         """)
         details_grid.addWidget(payment_value, row, 1)
         row += 1
+
+        # Official Status
+        official_label = QLabel("Official Sale:")
+        official_label.setStyleSheet("""
+            QLabel {
+                font-size: 14px;
+                font-weight: 600;
+                color: #4A5568;
+            }
+        """)
+        details_grid.addWidget(official_label, row, 0)
+
+        official_toggle = QCheckBox("Yes")
+        official_toggle.setChecked(bool(sale.get("official", 0)))
+        official_toggle.setCursor(Qt.PointingHandCursor)
+        official_toggle.setStyleSheet("""
+            QCheckBox {
+                font-size: 14px;
+                color: #2D3748;
+                padding: 4px;
+            }
+        """)
+        details_grid.addWidget(official_toggle, row, 1)
+        row += 1
+
+        def onOfficialToggled(checked, saleID=sale["saleID"]):
+            db = DbClient()
+            result = db.updateSaleOfficialStatus(
+                saleID,
+                1 if checked else 0
+            )
+
+            if result["status"] != "Success":
+                QMessageBox.warning(
+                    self,
+                    "Update Failed",
+                    "Could not update official status."
+                )
+                official_toggle.blockSignals(True)
+                official_toggle.setChecked(not checked)
+                official_toggle.blockSignals(False)
         
+        official_toggle.toggled.connect(onOfficialToggled)
+
         # Customer Contact (if available)
         if sale['customerPhone']:
             phone_label = QLabel("Phone:")

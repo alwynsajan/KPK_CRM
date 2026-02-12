@@ -398,7 +398,6 @@ class SalesHistoryDialog(QDialog):
 
         self.detailsScroll.setWidget(self.detailsContainer)
         self.detailsCard.layout.addWidget(self.detailsScroll)
-        
         columns_layout.addWidget(self.detailsCard, 5)  # 50% width
         
         main_layout.addWidget(columns_container, 1)
@@ -651,7 +650,7 @@ class SalesHistoryDialog(QDialog):
         # Create details grid with reduced spacing
         details_grid = QGridLayout()
         details_grid.setVerticalSpacing(8) 
-        details_grid.setHorizontalSpacing(20)
+        details_grid.setHorizontalSpacing(300)
         
         row = 0
         
@@ -710,22 +709,82 @@ class SalesHistoryDialog(QDialog):
                 font-size: 14px;
                 font-weight: 600;
                 color: #4A5568;
+                background-color: none;
             }
         """)
         details_grid.addWidget(official_label, row, 0)
 
-        official_toggle = QCheckBox("Yes")
+        # Container layout for toggle + status label
+        official_container = QHBoxLayout()
+        official_container.setSpacing(10)
+
+        # Toggle Button
+        official_toggle = QCheckBox()
         official_toggle.setChecked(bool(sale.get("official", 0)))
         official_toggle.setCursor(Qt.PointingHandCursor)
+
         official_toggle.setStyleSheet("""
-            QCheckBox {
-                font-size: 14px;
-                color: #2D3748;
-                padding: 4px;
+            QCheckBox::indicator {
+                width: 40px;
+                height: 20px;
+                border-radius: 10px;
+            }
+
+            QCheckBox::indicator:unchecked {
+                background-color: #E2E8F0;
+                border: 2px solid #CBD5E0;
+            }
+
+            QCheckBox::indicator:checked {
+                background-color: #38A169;
+                border: 2px solid #38A169;
             }
         """)
-        details_grid.addWidget(official_toggle, row, 1)
+
+        # Status Label (Yes / No)
+        official_status_label = QLabel()
+        official_status_label.setStyleSheet("""
+            QLabel {
+                font-size: 14px;
+                font-weight: bold;
+            }
+        """)
+
+        def updateOfficialUI(checked):
+            if checked:
+                official_status_label.setText("Yes")
+                official_status_label.setStyleSheet("""
+                    QLabel {
+                        font-size: 14px;
+                        font-weight: bold;
+                        color: #38A169;
+                        background-color: none;
+                    }
+                """)
+            else:
+                official_status_label.setText("No")
+                official_status_label.setStyleSheet("""
+                    QLabel {
+                        font-size: 14px;
+                        font-weight: bold;
+                        color: #E53E3E;
+                        background-color: none;
+                    }
+                """)
+
+        official_toggle.toggled.connect(updateOfficialUI)
+
+        # Set initial state
+        updateOfficialUI(official_toggle.isChecked())
+
+        # Add to horizontal layout
+        official_container.addWidget(official_toggle)
+        official_container.addWidget(official_status_label)
+        official_container.addStretch()
+
+        details_grid.addLayout(official_container, row, 1)
         row += 1
+
 
         def onOfficialToggled(checked, saleID=sale["saleID"]):
             db = DbClient()

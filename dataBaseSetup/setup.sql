@@ -24,10 +24,12 @@ CREATE TABLE IF NOT EXISTS customerData (
 -- ===============================
 CREATE TABLE IF NOT EXISTS productData (
     productID INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    productBarCode VARCHAR(50),
+    name VARCHAR(255) NOT NULL,
+    brand VARCHAR(150),
+    productBarCode VARCHAR(50) UNIQUE,
     pdtType VARCHAR(100),
-    price DECIMAL(10,2) NOT NULL
+    price DECIMAL(10,2) NOT NULL,
+    stock INT NOT NULL DEFAULT 0
 );
 
 -- ===============================

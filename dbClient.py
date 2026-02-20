@@ -149,83 +149,89 @@ class DbClient:
         return customerDetails  # Returns a tuple or None if not found
     
     def addProductData(self, productData):
-        """Insert new product into the productData table"""
+        """Insert new product or increase stock if barcode exists"""
+
         query = """
-        INSERT INTO productData (productBarCode, name, price, pdtType)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO productData (productBarCode, name, price, pdtType, stock)
+        VALUES (%s, %s, %s, %s, 1)
+        ON DUPLICATE KEY UPDATE
+            stock = stock + 1
         """
-        
+
         try:
             conn = self.connectToDB()
             cursor = conn.cursor()
+
             cursor.execute(query, (
                 str(productData["productBarCode"]),
                 productData["name"],
                 productData["price"],
                 productData["pdtType"]
             ))
+
             conn.commit()
-            
-            # Get the inserted ID
-            inserted_id = cursor.lastrowid
-            
+
             response = {
                 "status": "Success",
-                "message": "Product added successfully",
-                "productID": inserted_id
+                "message": "Product inserted or stock updated successfully"
             }
-            
+
         except mysql.connector.Error as err:
             print(f"Database Error: {err}")
-            
-            # Check for duplicate barcode error
-            if err.errno == 1062:  # Duplicate entry error code
-                response = {
-                    "status": "Failed", 
-                    "message": f"Product with barcode {productData['productBarCode']} already exists"
-                }
-            else:
-                response = {
-                    "status": "Failed",
-                    "message": f"Database error: {err}"
-                }
-            
+            response = {
+                "status": "Failed",
+                "message": f"Database error: {err}"
+            }
+
         except Exception as e:
             print(f"Unexpected Error: {e}")
             response = {
                 "status": "Failed",
                 "message": f"Unexpected error: {e}"
             }
-            
+
         finally:
             try:
                 cursor.close()
                 conn.close()
             except:
-                pass  # Ignore errors during cleanup
-        
+                pass
+
         return response
 
 
+
     def getAllProducts(self):
-        """Retrieve productID, name, and price from productData table"""
+        """Retrieve all product details from productData table"""
         query = """
-            SELECT productID, name, price
-            FROM productdata
+            SELECT 
+                productID,
+                name,
+                brand,
+                productBarCode,
+                pdtType,
+                price,
+                stock
+            FROM productData
             ORDER BY name
         """
 
         try:
             conn = self.connectToDB()
-            cursor = conn.cursor()
+            cursor = conn.cursor(dictionary=True)
             cursor.execute(query)
-            products = cursor.fetchall()  # [(id, name, price), ...]
+            products = cursor.fetchall()  # List of dictionaries
+
         except mysql.connector.Error as err:
             print(f"Database Error: {err}")
             products = []
+
         finally:
-            cursor.close()
-            conn.close()
+            try:
+                cursor.close()
+                conn.close()
+            except:
+                pass
 
         return products
 
@@ -709,7 +715,7 @@ class DbClient:
     def getProductByBarcode(self, barcode):
         """Get product details by barcode"""
         query = """
-        SELECT productID, productBarCode, name, price, pdtType 
+        SELECT productID, productBarCode, name, brand, price, pdtType 
         FROM productData 
         WHERE productBarCode = %s
         """

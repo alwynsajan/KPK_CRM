@@ -151,12 +151,13 @@ class DbClient:
     def addProductData(self, productData):
         """Insert new product or increase stock if barcode exists"""
 
-        query = """
-        INSERT INTO productData (productBarCode, name, price, pdtType, stock)
-        VALUES (%s, %s, %s, %s, 1)
-        ON DUPLICATE KEY UPDATE
-            stock = stock + 1
-        """
+        query = query = """
+            INSERT INTO productData 
+                (productBarCode, name, brand, price, pdtType, stock)
+            VALUES (%s, %s, %s, %s, %s, 1)
+            ON DUPLICATE KEY UPDATE
+                stock = stock + 1
+            """
 
         try:
             conn = self.connectToDB()
@@ -165,6 +166,7 @@ class DbClient:
             cursor.execute(query, (
                 str(productData["productBarCode"]),
                 productData["name"],
+                productData["brand"],
                 productData["price"],
                 productData["pdtType"]
             ))
@@ -198,7 +200,6 @@ class DbClient:
                 pass
 
         return response
-
 
 
     def getAllProducts(self):
@@ -257,6 +258,7 @@ class DbClient:
     
     # ------------------- Add Sale with Items -------------------
     def addSaleWithItems(self, saleData):
+
         response = {
             "status": "Failed",
             "message": "Unknown error",
@@ -275,18 +277,15 @@ class DbClient:
             cursor = conn.cursor()
 
             # ------------------ Insert Sale ------------------
-            customerID = saleData.get("customerID") or None
-            saleDateTime = saleData.get("saleDateTime") or datetime.now()
-
             cursor.execute(
                 """
                 INSERT INTO sales (saleDateTime, customerID, paymentType, note, official)
                 VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
-                    saleDateTime,
-                    customerID,
-                    saleData["paymentType"],
+                    saleData.get("saleDateTime"),
+                    saleData.get("customerID"),
+                    saleData.get("paymentType"),
                     saleData.get("note"),
                     saleData.get("official", 0)
                 )
@@ -294,28 +293,6 @@ class DbClient:
 
             saleID = cursor.lastrowid
 
-            # ------------------ Resolve productID by UNIQUE name ------------------
-            productIdCache = {}
-
-            for item in saleData["items"]:
-                productName = item.get("name")
-
-                if not productName:
-                    raise ValueError("Sale item missing product name")
-
-                if productName not in productIdCache:
-                    cursor.execute(
-                        "SELECT productID FROM productData WHERE name = %s",
-                        (productName,)
-                    )
-                    row = cursor.fetchone()
-
-                    if not row:
-                        raise ValueError(f"Product not found: {productName}")
-
-                    productIdCache[productName] = row[0]
-
-            # ------------------ Insert Sale Items ------------------
             itemQuery = """
                 INSERT INTO saleItems (saleID, productID, unitPrice, quantity)
                 VALUES (%s, %s, %s, %s)
@@ -323,24 +300,49 @@ class DbClient:
 
             totalSaleAmount = 0.0
 
+            # ------------------ Process Items ------------------
             for item in saleData["items"]:
-                productName = item["name"]
-                productID = productIdCache[productName]
 
+                barcode = item.get("barcode", "").strip()
+                quantity = int(item.get("quantity", 1))
                 price = float(item.get("price", 0))
                 discount = float(item.get("discount", 0))
-                quantity = int(item.get("quantity", 1))
 
                 unitPrice = price * (1 - discount / 100)
                 totalSaleAmount += unitPrice * quantity
 
+                productID = None
+
+                # If barcode exists → fetch product & reduce stock
+                if barcode:
+
+                    cursor.execute(
+                        "SELECT productID, stock FROM productData WHERE productBarCode = %s",
+                        (barcode,)
+                    )
+                    row = cursor.fetchone()
+
+                    if row:
+                        productID = row[0]
+                        currentStock = row[1]
+
+                        newStock = currentStock - quantity
+                        if newStock < 0:
+                            raise ValueError(f"Not enough stock for barcode {barcode}")
+
+                        cursor.execute(
+                            "UPDATE productData SET stock = %s WHERE productID = %s",
+                            (newStock, productID)
+                        )
+
+                # Insert sale item (productID can be None for misc items)
                 cursor.execute(
                     itemQuery,
                     (saleID, productID, unitPrice, quantity)
                 )
 
             # ------------------ Update Per-Day Sales ------------------
-            saleDateOnly = saleDateTime.date()
+            saleDateOnly = saleData.get("saleDateTime").date()
 
             cursor.execute(
                 "SELECT totalSales FROM perDaySale WHERE saleDate = %s",
@@ -370,6 +372,7 @@ class DbClient:
         except Exception as err:
             if conn:
                 conn.rollback()
+
             response = {
                 "status": "Failed",
                 "message": str(err),

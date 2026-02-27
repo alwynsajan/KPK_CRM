@@ -325,7 +325,7 @@ class ProductSelectorDialog(QDialog):
     # ----------------- DATA -----------------
     def loadProducts(self):
         db = DbClient()
-        self.products = db.getAllProducts()  # [(id, name, price), ...]
+        self.products = db.getAllProducts()  # Now list of dictionaries
 
         if not self.products:
             QMessageBox.information(
@@ -336,33 +336,38 @@ class ProductSelectorDialog(QDialog):
             self.reject()
             return
 
-        # Sort products by name
-        self.products.sort(key=lambda x: x[1].lower())
+        # Sort products by name (dictionary key)
+        self.products.sort(key=lambda x: x["name"].lower())
+
         self.populateList(self.products)
         self.updateSelectionInfo(len(self.products))
 
     def populateList(self, products):
         self.productList.clear()
         
-        for index, (pid, name, price) in enumerate(products):
-            # Create a container widget for the entire row
+        for index, product in enumerate(products):
+            pid = product["productID"]
+            name = product["name"]
+            brand = product.get("brand", "")
+            price = float(product.get("price", 0))
+            stock = int(product.get("stock", 0))
+
+            # Create container widget
             row_widget = QWidget()
             row_widget.setProperty("baseColor", "#FFFFFF" if index % 2 == 0 else "#F8FAFC")
             
-            # Main layout for the row
             row_layout = QHBoxLayout(row_widget)
-            row_layout.setContentsMargins(0, 0, 0, 0)  # No margins in the container
+            row_layout.setContentsMargins(0, 0, 0, 0)
             row_layout.setSpacing(0)
             
-            # Create the content widget that will have the border
             content_widget = QWidget()
-            content_widget.setProperty("baseColor", "#FFFFFF" if index % 2 == 0 else "#F8FAFC")
             content_layout = QHBoxLayout(content_widget)
-            content_layout.setContentsMargins(16, 6, 16, 6)  # Padding inside the content
-            content_layout.setSpacing(0)
+            content_layout.setContentsMargins(16, 6, 16, 6)
+            content_layout.setSpacing(10)
 
-            # Name label
-            nameLabel = QLabel(name)
+            # ---------------- Name + Brand ----------------
+            displayName = f"{name} ({brand})" if brand else name
+            nameLabel = QLabel(displayName)
             nameLabel.setStyleSheet("""
                 QLabel {
                     font-size: 12px;
@@ -373,7 +378,18 @@ class ProductSelectorDialog(QDialog):
             nameLabel.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
             nameLabel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-            # Price label
+            # ---------------- Stock ----------------
+            stockLabel = QLabel(f"Stock: {stock}")
+            stockLabel.setStyleSheet("""
+                QLabel {
+                    font-size: 11px;
+                    color: #718096;
+                }
+            """)
+            stockLabel.setAlignment(Qt.AlignCenter)
+            stockLabel.setFixedWidth(90)
+
+            # ---------------- Price ----------------
             priceLabel = QLabel(f"${price:.2f}")
             priceLabel.setStyleSheet("""
                 QLabel {
@@ -386,12 +402,12 @@ class ProductSelectorDialog(QDialog):
             priceLabel.setFixedWidth(80)
 
             content_layout.addWidget(nameLabel)
+            content_layout.addWidget(stockLabel)
             content_layout.addWidget(priceLabel)
-            
-            # Add content widget to row widget
+
             row_layout.addWidget(content_widget)
-            
-            # Set initial styling
+
+            # Alternating row background
             base_color = "#FFFFFF" if index % 2 == 0 else "#F8FAFC"
             content_widget.setStyleSheet(f"""
                 QWidget {{
@@ -400,14 +416,13 @@ class ProductSelectorDialog(QDialog):
                 }}
             """)
 
-            # Add item to QListWidget
+            # Add to list
             listItem = QListWidgetItem()
             listItem.setSizeHint(row_widget.sizeHint())
-            listItem.setData(Qt.UserRole, (pid, name, price))  # Store data
+            listItem.setData(Qt.UserRole, product)  # Store full dictionary
             self.productList.addItem(listItem)
             self.productList.setItemWidget(listItem, row_widget)
 
-        # Clear selection
         self.productList.clearSelection()
         self.selectBtn.setEnabled(False)
         self.selectionInfo.setText(f"Found {len(products)} product(s)")
@@ -416,63 +431,74 @@ class ProductSelectorDialog(QDialog):
         selected = self.productList.currentItem()
         is_enabled = selected is not None
         self.selectBtn.setEnabled(is_enabled)
-        
-        # Update selection colors
+
         for i in range(self.productList.count()):
             item = self.productList.item(i)
             row_widget = self.productList.itemWidget(item)
+
             if row_widget:
-                # Find the content widget inside the row widget
                 content_widget = row_widget.findChild(QWidget)
                 if content_widget:
                     baseColor = content_widget.property("baseColor") or "#FFFFFF"
-                    
+
                     if item.isSelected():
-                        # Apply border directly to the content widget
-                        content_widget.setStyleSheet(f"""
-                            QWidget {{
+                        content_widget.setStyleSheet("""
+                            QWidget {
                                 background-color: #EBF8FF;
-                            }}
+                            }
                         """)
-                        # Get product data
+
                         product_data = item.data(Qt.UserRole)
                         if product_data:
-                            pid, name, price = product_data
-                            self.selectionInfo.setText(f"Selected: {name} (${price:.2f})")
+                            name = product_data.get("name", "")
+                            brand = product_data.get("brand", "")
+                            price = float(product_data.get("price", 0))
+
+                            displayName = f"{name} ({brand})" if brand else name
+                            self.selectionInfo.setText(
+                                f"Selected: {displayName} (${price:.2f})"
+                            )
                     else:
-                        # No border-left for unselected items
                         content_widget.setStyleSheet(f"""
                             QWidget {{
                                 background-color: {baseColor};
                                 border-bottom: 1px solid #F1F5F9;
-                                border-left: 0px solid transparent;
                             }}
                         """)
 
     def filterProducts(self, text):
         if not self.products:
             return
-            
+
         if text.strip() == "":
-            # Show all sorted by name when search is empty
-            filtered = sorted(self.products, key=lambda x: x[1].lower())
+            filtered = sorted(
+                self.products,
+                key=lambda x: x["name"].lower()
+            )
         else:
-            # Filter by name and sort by name
             filtered = [
-                (pid, name, price) for pid, name, price in self.products
-                if text.lower() in name.lower()
+                product for product in self.products
+                if text.lower() in product["name"].lower()
             ]
-            filtered = sorted(filtered, key=lambda x: x[1].lower())
-            
+
+            filtered = sorted(
+                filtered,
+                key=lambda x: x["name"].lower()
+            )
+
         self.populateList(filtered)
         self.updateSelectionInfo(len(filtered), text)
 
     def updateSelectionInfo(self, count, search_text=""):
         if search_text:
             if count == 0:
-                self.selectionInfo.setText(f"No products found matching '{search_text}'")
+                self.selectionInfo.setText(
+                    f"No products found matching '{search_text}'"
+                )
             else:
-                self.selectionInfo.setText(f"Found {count} product(s) matching '{search_text}'")
+                self.selectionInfo.setText(
+                    f"Found {count} product(s) matching '{search_text}'"
+                )
         else:
             self.selectionInfo.setText(f"Showing {count} product(s)")
 
@@ -482,13 +508,18 @@ class ProductSelectorDialog(QDialog):
         if not item:
             return
 
-        # Get product data from stored role
-        productID, name, price = item.data(Qt.UserRole)
+        product_data = item.data(Qt.UserRole)
+
+        if not product_data:
+            return
 
         productData = {
-            "productID": productID,
-            "name": name,
-            "price": price
+            "productID": product_data.get("productID"),
+            "name": product_data.get("name"),
+            "brand": product_data.get("brand"),
+            "price": float(product_data.get("price", 0)),
+            "productBarCode": product_data.get("productBarCode"),
+            "stock": product_data.get("stock")
         }
 
         if self.addProductRow:

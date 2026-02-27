@@ -192,6 +192,11 @@ class ProductForm(QWidget):
         self.nameInput = ModernLineEdit("Enter product name")
         card_layout.addWidget(self.nameInput)
 
+        # --- Brand Name ---
+        card_layout.addWidget(ModernLabel("Brand Name", required=True))
+        self.brandInput = ModernLineEdit("Enter brand name")
+        card_layout.addWidget(self.brandInput)
+
         
         # --- Product Type ---
         card_layout.addWidget(ModernLabel("Product Type", required=True))
@@ -259,6 +264,7 @@ class ProductForm(QWidget):
     def addProduct(self):
         barcode = self.barcodeInput.text().strip()
         name = self.nameInput.text().strip()
+        brand = self.brandInput.text().strip()
         pdtType=self.typeInput.text().strip()
         price_text = self.priceInput.text().strip()
 
@@ -282,6 +288,22 @@ class ProductForm(QWidget):
             """)
         else:
             self.nameInput.setStyleSheet(ModernLineEdit().styleSheet())
+
+        # ------------------- Brand Validation (MANDATORY) -------------------
+        if not brand:
+            errors.append("Brand name is required")
+            self.brandInput.setStyleSheet("""
+                QLineEdit {
+                    background-color: #FFFFFF;
+                    color: #2D3748;
+                    border: 2px solid #E53E3E;
+                    border-radius: 8px;
+                    padding: 10px 16px;
+                    font-size: 14px;
+                }
+            """)
+        else:
+            self.brandInput.setStyleSheet(ModernLineEdit().styleSheet())
         
         if not price_text:
             errors.append("Price is required")
@@ -379,6 +401,7 @@ class ProductForm(QWidget):
         response = db.addProductData({
             "productBarCode": barcode,
             "name": name,
+            "brand": brand,
             "pdtType":pdtType,
             "price": price
         })

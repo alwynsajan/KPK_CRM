@@ -326,9 +326,9 @@ class MainArea(QWidget):
 
         # Product table
         self.productTable = QTableWidget()
-        self.productTable.setColumnCount(6)
+        self.productTable.setColumnCount(8)
         self.productTable.setHorizontalHeaderLabels(
-            ["Product", "Qty", "Price", "Discount %", "Total", "Remove"]
+            ["S/N", "Barcode", "Product", "Qty", "Price", "Discount %", "Total", "Remove"]
         )
         self.productTable.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
@@ -358,9 +358,14 @@ class MainArea(QWidget):
             if total <= 0:
                 return
 
-            self.productTable.setColumnWidth(0, int(total * 0.49))  # Product 50%
-            for col in range(1, 6):
-                self.productTable.setColumnWidth(col, int(total * 0.10))  # Others 10%
+            self.productTable.setColumnWidth(0, int(total * 0.06))  # S/N
+            self.productTable.setColumnWidth(1, int(total * 0.14))  # Barcode
+            self.productTable.setColumnWidth(2, int(total * 0.30))  # Product
+            self.productTable.setColumnWidth(3, int(total * 0.10))  # Qty
+            self.productTable.setColumnWidth(4, int(total * 0.12))  # Price
+            self.productTable.setColumnWidth(5, int(total * 0.10))  # Discount
+            self.productTable.setColumnWidth(6, int(total * 0.12))  # Total
+            self.productTable.setColumnWidth(7, int(total * 0.06))  # Remove
 
         # Apply once and on resize
         adjustColumnWidths()
@@ -604,6 +609,7 @@ class MainArea(QWidget):
                     self.addProductRow({
                         "name": product_data.get("name", "Unknown Product"),
                         "price": float(product_data.get("price", 0)),
+                        "productBarCode": self.barcode_buffer,
                         "qty": qty
                     })
                     
@@ -639,9 +645,11 @@ class MainArea(QWidget):
 
     # ------------------- Add Product Logic -------------------
     def addProductRow(self, productData):
+
         name = productData.get("name", "").strip()
         priceValue = productData.get("price", 0)
         qtyValue = productData.get("qty", 1)
+        barcode = productData.get("productBarCode", "").strip()
 
         if not name or not priceValue:
             QMessageBox.warning(self, "Missing Information", "Please enter product name and price.")
@@ -654,14 +662,17 @@ class MainArea(QWidget):
             QMessageBox.warning(self, "Invalid Input", "Quantity and price must be valid numbers.")
             return
 
-        # CHECK IF PRODUCT ALREADY EXISTS → INCREASE QTY
+        # =========================================================
+        # CHECK IF PRODUCT ALREADY EXISTS (BY BARCODE)
+        # =========================================================
         for row in range(self.productTable.rowCount()):
-            existingNameItem = self.productTable.item(row, 0)
-            if existingNameItem and existingNameItem.text().strip().lower() == name.lower():
+            existingBarcodeItem = self.productTable.item(row, 1)
 
-                qty_item = self.productTable.item(row, 1)
-                price_item = self.productTable.item(row, 2)
-                discount_item = self.productTable.item(row, 3)
+            if existingBarcodeItem and existingBarcodeItem.text().strip() == barcode:
+
+                qty_item = self.productTable.item(row, 3)
+                price_item = self.productTable.item(row, 4)
+                discount_item = self.productTable.item(row, 5)
 
                 try:
                     existingQty = float(qty_item.text())
@@ -675,44 +686,58 @@ class MainArea(QWidget):
                 qty_item.setText(str(int(newQty)) if newQty.is_integer() else str(newQty))
 
                 total = (unitPrice * newQty) * (1 - discount / 100)
-                self.productTable.item(row, 4).setText(f"${total:.2f}")
+                self.productTable.item(row, 6).setText(f"${total:.2f}")
 
                 self.updateGrandTotal()
                 self.clearProductFields()
-                return  
+                return
 
+        # =========================================================
         # ADD NEW ROW (IF PRODUCT DOES NOT EXIST)
+        # =========================================================
         total = qtyValue * priceValue
-
         row = self.productTable.rowCount()
         self.productTable.insertRow(row)
 
-        # Product Name
-        name_item = QTableWidgetItem(name)
-        self.productTable.setItem(row, 0, name_item)
+        serialNumber = row + 1
 
-        # Qty
+        # ---------------- Serial Number (0) ----------------
+        sn_item = QTableWidgetItem(str(serialNumber))
+        sn_item.setFlags(sn_item.flags() & ~Qt.ItemIsEditable)
+        sn_item.setTextAlignment(Qt.AlignCenter)
+        self.productTable.setItem(row, 0, sn_item)
+
+        # ---------------- Barcode (1) ----------------
+        barcode_item = QTableWidgetItem(barcode)
+        barcode_item.setTextAlignment(Qt.AlignCenter)
+        self.productTable.setItem(row, 1, barcode_item)
+
+        # ---------------- Product Name (2) ----------------
+        name_item = QTableWidgetItem(name)
+        self.productTable.setItem(row, 2, name_item)
+
+        # ---------------- Qty (3) ----------------
         qty_item = QTableWidgetItem(str(int(qtyValue)) if qtyValue.is_integer() else str(qtyValue))
         qty_item.setTextAlignment(Qt.AlignCenter)
-        self.productTable.setItem(row, 1, qty_item)
+        self.productTable.setItem(row, 3, qty_item)
 
-        # Unit Price
+        # ---------------- Price (4) ----------------
         price_item = QTableWidgetItem(f"${priceValue:.2f}")
         price_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.productTable.setItem(row, 2, price_item)
+        self.productTable.setItem(row, 4, price_item)
 
-        # Discount
+        # ---------------- Discount (5) ----------------
         discount_item = QTableWidgetItem("0.0%")
         discount_item.setTextAlignment(Qt.AlignCenter)
-        self.productTable.setItem(row, 3, discount_item)
+        self.productTable.setItem(row, 5, discount_item)
 
-        # Total Price
+        # ---------------- Total (6) ----------------
         totalItem = QTableWidgetItem(f"${total:.2f}")
         totalItem.setFlags(totalItem.flags() & ~Qt.ItemIsEditable)
         totalItem.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.productTable.setItem(row, 4, totalItem)
+        self.productTable.setItem(row, 6, totalItem)
 
-        # Delete button
+        # ---------------- Delete Button (7) ----------------
         deleteLabel = QLabel("X")
         deleteLabel.setAlignment(Qt.AlignCenter)
         deleteLabel.setFixedHeight(20)
@@ -733,14 +758,20 @@ class MainArea(QWidget):
         deleteLabel.setCursor(Qt.PointingHandCursor)
         deleteLabel.mousePressEvent = lambda event, r=row: self.deleteRow(r)
 
-        self.productTable.setCellWidget(row, 5, deleteLabel)
+        self.productTable.setCellWidget(row, 7, deleteLabel)
 
         self.clearProductFields()
         self.updateGrandTotal()
 
-    # ------------------- Delete Row -------------------
+    #-------------------- Refresh S/N ------------------------------
+    def refreshSerialNumbers(self):
+        for row in range(self.productTable.rowCount()):
+            self.productTable.item(row, 0).setText(str(row + 1))
+
+    #-------------------- Delete Row ------------------------------
     def deleteRow(self, row):
         self.productTable.removeRow(row)
+        self.refreshSerialNumbers()
         self.updateGrandTotal()
 
     # ------------------- Update Customer Input -------------------
@@ -750,17 +781,17 @@ class MainArea(QWidget):
 
     # ------------------- Update Total Price on Cell Change -------------------
     def updateTotalPrice(self, row, column):
-        if column not in [1, 2, 3]:
+        if column not in [3, 4, 5]:
             return
 
         try:
-            qty_item = self.productTable.item(row, 1)
-            price_item = self.productTable.item(row, 2)
-            discount_item = self.productTable.item(row, 3)
+            qty_item = self.productTable.item(row, 3)
+            price_item = self.productTable.item(row, 4)
+            discount_item = self.productTable.item(row, 5)
 
             if not discount_item:
                 discount_item = QTableWidgetItem("0.0%")
-                self.productTable.setItem(row, 3, discount_item)
+                self.productTable.setItem(row, 5, discount_item)
 
             # -------- Validate Quantity --------
             try:
@@ -797,10 +828,10 @@ class MainArea(QWidget):
 
             total = (price * qty) * (1 - discount / 100)
 
-            total_item = self.productTable.item(row, 4)
+            total_item = self.productTable.item(row, 6)
             if not total_item:
                 total_item = QTableWidgetItem()
-                self.productTable.setItem(row, 4, total_item)
+                self.productTable.setItem(row, 6, total_item)
 
             self.productTable.blockSignals(True)
             total_item.setText(f"${total:.2f}")
@@ -820,9 +851,12 @@ class MainArea(QWidget):
     def updateGrandTotal(self):
         total = 0.0
         for row in range(self.productTable.rowCount()):
-            item = self.productTable.item(row, 4)
-            if item and item.text():
-                total += float(item.text().replace("$", ""))
+            total_item = self.productTable.item(row, 6)  # Updated to Total column
+            if total_item and total_item.text():
+                try:
+                    total += float(total_item.text().replace("$", ""))
+                except ValueError:
+                    continue
 
         self.totalAmountValue.setText(f"${total:.2f}")
 
@@ -866,6 +900,7 @@ class MainArea(QWidget):
 
     # ------------------- Handle Save Sales -------------------
     def handleSaveSales(self, type=None):
+
         # ------------------ Customer Check ------------------
         customerName = self.customerInput.text().strip()
 
@@ -882,10 +917,13 @@ class MainArea(QWidget):
         self.finalProductList = []
 
         for row in range(self.productTable.rowCount()):
-            nameItem = self.productTable.item(row, 0)
-            qtyItem = self.productTable.item(row, 1)
-            priceItem = self.productTable.item(row, 2)
-            discountItem = self.productTable.item(row, 3)
+
+            # UPDATED COLUMN INDEXES
+            nameItem = self.productTable.item(row, 2)
+            barcodeItem = self.productTable.item(row, 1)
+            qtyItem = self.productTable.item(row, 3)
+            priceItem = self.productTable.item(row, 4)
+            discountItem = self.productTable.item(row, 5)
 
             # ---- Validate Product Name ----
             if not nameItem or not nameItem.text().strip():
@@ -937,6 +975,7 @@ class MainArea(QWidget):
 
             self.finalProductList.append({
                 "name": nameItem.text().strip(),
+                "barcode": barcodeItem.text().strip() if barcodeItem else "",
                 "quantity": quantity,
                 "price": price,
                 "discount": discount
@@ -976,24 +1015,12 @@ class MainArea(QWidget):
         # ------------------ Save to Database ------------------
         response = self.dbClent.addSaleWithItems(saleData)
 
-        # ------------------ Handle Result ------------------
         if response.get("status") == "Success":
-            saleID = response.get("saleID")
-
             if type != "invoice":
-                QMessageBox.information(
-                    self,
-                    "Success",
-                    f"Sale saved successfully!"
-                )
-
-            if type != "invoice":
+                QMessageBox.information(self, "Success", "Sale saved successfully!")
                 self.handleVoidSale()
 
-            return {
-                "status": "Success",
-                "saleID": saleID
-            }
+            return {"status": "Success", "saleID": response.get("saleID")}
 
         else:
             QMessageBox.critical(
@@ -1001,10 +1028,7 @@ class MainArea(QWidget):
                 "Error",
                 f"Failed to save sale.\n\n{response.get('message')}"
             )
-            return {
-                "status": "Failed",
-                "saleID": None
-            }
+            return {"status": "Failed", "saleID": None}
 
     # ------------------- Handle Print Invoice -------------------
     def handlePrintInvoice(self):

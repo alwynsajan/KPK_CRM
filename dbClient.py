@@ -744,6 +744,34 @@ class DbClient:
                 pass
         
         return product_data
+
+    def getTableRowsForExport(self, tableName):
+        """Fetch all rows from an allowed table for CSV export."""
+        allowed_tables = {
+            "customerData",
+            "productData",
+            "sales",
+            "saleItems",
+            "perDaySale",
+        }
+        if tableName not in allowed_tables:
+            raise ValueError(f"Table '{tableName}' is not allowed for export")
+
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(f"SELECT * FROM {tableName}")
+            rows = cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description] if cursor.description else []
+            return {"status": "Success", "columns": columns, "rows": rows}
+        except mysql.connector.Error as err:
+            return {"status": "Failed", "message": str(err), "columns": [], "rows": []}
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except Exception:
+                pass
     
     def updateSaleOfficialStatus(self, saleID, official):
         try:

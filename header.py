@@ -2,7 +2,8 @@ from PySide6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushBu
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette, QColor
 from csvImportDialog import CSVImportDialog
-from reportsDialog import ReportsDialog
+from exportDialog import ExportDialog
+# from reportsDialog import ReportsDialog
 
 
 class Header(QWidget):
@@ -55,17 +56,26 @@ class Header(QWidget):
         bottomRow.addStretch()
 
         # Navigation buttons with contrast
-        btnNames = [ "📈 Reports","📊 Sales", "💳 Credits", "📤 Import Pdt Data"]
+        btnNames = [
+            "📈 Reports",
+            "📊 Sales",
+            "💳 Credits",
+            "📤 Import Pdt Data",
+            "📥 Export",
+        ]
         self.headerBtns = []
         
         for name in btnNames:
-            btn = ModernNavButton(name)
+            style = "export" if name == "📥 Export" else "default"
+            btn = ModernNavButton(name, style_type=style)
             if name == "💳 Credits":
                 btn.clicked.connect(self.openCreditSales)
-            if name == "📊 Sales":
+            elif name == "📊 Sales":
                 btn.clicked.connect(self.openSalesHistory)
-            if name == "📤 Import Pdt Data":
+            elif name == "📥 Import Pdt Data":
                 btn.clicked.connect(self.openCSVImport)
+            elif name == "📤 Export":
+                btn.clicked.connect(self.openExportDialog)
             elif name == "📈 Reports":
                 btn.clicked.connect(self.openReportsDialog)
             bottomRow.addWidget(btn)
@@ -99,34 +109,60 @@ class Header(QWidget):
         dialog = CSVImportDialog(self)
         dialog.exec()
 
+    def openExportDialog(self):
+        """Open CSV export dialog"""
+        dialog = ExportDialog(self.main_window or self)
+        dialog.exec()
+
     def openReportsDialog(self):
         dialog = ReportsDialog(self.main_window)
         dialog.exec()
 
 # ------------------- Modern Navigation Button -------------------
 class ModernNavButton(QPushButton):
-    def __init__(self, text):
+    def __init__(self, text, style_type="default"):
         super().__init__(text)
         self.setFixedHeight(34)
-        self.setFixedWidth(110)
+        self.setMinimumWidth(110)
         self.setCursor(Qt.PointingHandCursor)
-        self.setStyleSheet("""
-            QPushButton {
-                background-color: rgba(74, 144, 226, 0.9);
-                color: white;
-                border: none;
-                border-radius: 6px;
-                padding: 6px 12px;
-                font-size: 12px;
-                font-weight: 600;
-                min-width: 105px;
-            }
-            QPushButton:hover {
-                background-color: rgba(52, 152, 219, 1.0);
-            }
-            QPushButton:pressed {
-                background-color: #21618C;
-            }
-        """)
 
-    
+        styles = {
+            "default": """
+                QPushButton {
+                    background-color: rgba(74, 144, 226, 0.9);
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 6px 12px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    min-width: 105px;
+                }
+                QPushButton:hover {
+                    background-color: rgba(52, 152, 219, 1.0);
+                }
+                QPushButton:pressed {
+                    background-color: #21618C;
+                }
+            """,
+            "export": """
+                QPushButton {
+                    background-color: rgba(56, 161, 105, 0.95);
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 6px 12px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    min-width: 105px;
+                }
+                QPushButton:hover {
+                    background-color: #2F855A;
+                }
+                QPushButton:pressed {
+                    background-color: #276749;
+                }
+            """,
+        }
+
+        self.setStyleSheet(styles.get(style_type, styles["default"]))

@@ -72,9 +72,9 @@ class Header(QWidget):
                 btn.clicked.connect(self.openCreditSales)
             elif name == "📊 Sales":
                 btn.clicked.connect(self.openSalesHistory)
-            elif name == "📥 Import Pdt Data":
+            elif name == "📤 Import Pdt Data":
                 btn.clicked.connect(self.openCSVImport)
-            elif name == "📤 Export":
+            elif name == "📥 Export":
                 btn.clicked.connect(self.openExportDialog)
             elif name == "📈 Reports":
                 btn.clicked.connect(self.openReportsDialog)

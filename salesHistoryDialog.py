@@ -239,6 +239,7 @@ class SalesHistoryDialog(QDialog):
         filter_layout.addWidget(month_label)
         
         self.monthCombo = ModernComboBox()
+        self.monthCombo.currentIndexChanged.connect(self.loadDaysForMonth)
         filter_layout.addWidget(self.monthCombo)
         
         # Year filter
@@ -255,11 +256,6 @@ class SalesHistoryDialog(QDialog):
         self.yearCombo = ModernComboBox()
         self.yearCombo.currentTextChanged.connect(self.updateMonthCombo)
         filter_layout.addWidget(self.yearCombo)
-        
-        # Load button
-        self.loadBtn = ModernButton("Load Sales", "primary", width=120)
-        self.loadBtn.clicked.connect(self.loadDaysForMonth)
-        filter_layout.addWidget(self.loadBtn)
         
         filter_layout.addStretch()
         main_layout.addWidget(filter_container)
@@ -283,7 +279,7 @@ class SalesHistoryDialog(QDialog):
                 background-color: white;
                 border: 1px solid #E2E8F0;
                 border-radius: 8px;
-                font-size: 13px;
+                font-size: 15px;
                 outline: none;
                 padding: 2px;
                 min-height: 400px;
@@ -339,7 +335,7 @@ class SalesHistoryDialog(QDialog):
                 background-color: white;
                 border: 1px solid #E2E8F0;
                 border-radius: 8px;
-                font-size: 13px;
+                font-size: 15px;
                 outline: none;
                 padding: 2px;
                 min-height: 400px;
@@ -416,7 +412,8 @@ class SalesHistoryDialog(QDialog):
             }]
         
         # Populate year combo
-        years = sorted(set(m['year'] for m in months), reverse=True)
+        years = sorted({int(m['year']) for m in months}, reverse=True)
+        self.yearCombo.blockSignals(True)
         self.yearCombo.clear()
         for year in years:
             self.yearCombo.addItem(str(year), year)
@@ -426,26 +423,26 @@ class SalesHistoryDialog(QDialog):
             self.yearCombo.setCurrentText(str(self.current_year))
         elif years:
             self.yearCombo.setCurrentText(str(years[0]))
+        self.yearCombo.blockSignals(False)
         
-        # Load months for selected year
+        # Load months for selected year (also loads days)
         self.updateMonthCombo()
-        
-        # Trigger load for current month
-        self.loadDaysForMonth()
 
     def updateMonthCombo(self):
         """Update month combo based on selected year"""
+        if not self.yearCombo.currentText():
+            return
+
         selected_year = int(self.yearCombo.currentText())
         
         db = DbClient()
         months = db.getUniqueSalesMonths()
         
-        # Filter months for selected year
-        year_months = [m for m in months if m['year'] == selected_year]
+        # Filter months for selected year (coerce types for safe compare)
+        year_months = [m for m in months if int(m['year']) == selected_year]
         
         # If no months for selected year, create a list of all months with "No Data" flag
         if not year_months:
-            # Create a list of all months with no data flag
             import calendar
             year_months = []
             for month_num in range(1, 13):
@@ -454,41 +451,47 @@ class SalesHistoryDialog(QDialog):
                     'year': selected_year,
                     'month': month_num,
                     'month_name': month_name,
-                    'no_data': True  # Flag to indicate no sales data
+                    'no_data': True
                 })
         else:
-            # Add flag for months with data
             for month in year_months:
                 month['no_data'] = False
         
         # Sort months in descending order
-        year_months.sort(key=lambda x: x['month'], reverse=True)
+        year_months.sort(key=lambda x: int(x['month']), reverse=True)
         
+        self.monthCombo.blockSignals(True)
         self.monthCombo.clear()
         for month_data in year_months:
+            month_num = int(month_data['month'])
             if month_data.get('no_data', False):
                 display_text = f"{month_data['month_name']} (No Data)"
             else:
                 display_text = f"{month_data['month_name']}"
-            self.monthCombo.addItem(display_text, month_data['month'])
+            self.monthCombo.addItem(display_text, month_num)
         
-        # Select current month if available
+        # Prefer current calendar month if present, otherwise first item
+        selected_index = 0
         for i in range(self.monthCombo.count()):
             if self.monthCombo.itemData(i) == self.current_month:
-                self.monthCombo.setCurrentIndex(i)
+                selected_index = i
                 break
-            elif self.monthCombo.count() > 0:
-                self.monthCombo.setCurrentIndex(0)
+        if self.monthCombo.count() > 0:
+            self.monthCombo.setCurrentIndex(selected_index)
+        self.monthCombo.blockSignals(False)
+
+        self.loadDaysForMonth()
 
     def loadDaysForMonth(self):
         """Load days for selected month and year"""
         month = self.monthCombo.currentData()
-        year = int(self.yearCombo.currentText())
-        month_name = self.monthCombo.currentText()  # Get the month name
-        
-        if not month:
-            QMessageBox.warning(self, "No Month Selected", "Please select a month.")
+        year_text = self.yearCombo.currentText()
+        if month is None or not year_text:
             return
+
+        year = int(year_text)
+        month = int(month)
+        month_name = self.monthCombo.currentText().replace(" (No Data)", "")
         
         db = DbClient()
         days = db.getSalesByMonthYear(month, year)
@@ -540,7 +543,7 @@ class SalesHistoryDialog(QDialog):
             item.setData(Qt.UserRole, sale_date)
             
             font = QFont()
-            font.setPointSize(12)
+            font.setPointSize(14)
             item.setFont(font)
             
             self.daysList.addItem(item)
@@ -590,7 +593,7 @@ class SalesHistoryDialog(QDialog):
             item.setData(Qt.UserRole, sale)
             
             font = QFont()
-            font.setPointSize(11)
+            font.setPointSize(14)
             item.setFont(font)
             
             self.salesList.addItem(item)

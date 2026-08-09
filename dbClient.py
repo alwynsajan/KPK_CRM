@@ -600,7 +600,7 @@ class DbClient:
         SELECT DISTINCT DATE(saleDateTime) as saleDate
         FROM sales
         WHERE MONTH(saleDateTime) = %s AND YEAR(saleDateTime) = %s
-        ORDER BY saleDate DESC
+        ORDER BY saleDate ASC
         """
         
         try:
@@ -635,7 +635,7 @@ class DbClient:
             FROM sales s
             LEFT JOIN customerData c ON s.customerID = c.customerID
             WHERE DATE(s.saleDateTime) = %s
-            ORDER BY s.saleDateTime DESC
+            ORDER BY s.saleDateTime ASC
         """
         
         try:

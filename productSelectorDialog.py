@@ -319,8 +319,9 @@ class ProductSelectorDialog(QDialog):
         
         layout.addWidget(button_container)
 
-        # Connect selection change
+        # Connect selection change / double-click to add
         self.productList.itemSelectionChanged.connect(self.updateSelectionState)
+        self.productList.itemDoubleClicked.connect(self.selectProduct)
 
     # ----------------- DATA -----------------
     def loadProducts(self):
@@ -354,6 +355,7 @@ class ProductSelectorDialog(QDialog):
 
             # Create container widget
             row_widget = QWidget()
+            row_widget.setAttribute(Qt.WA_TransparentForMouseEvents, True)
             row_widget.setProperty("baseColor", "#FFFFFF" if index % 2 == 0 else "#F8FAFC")
             
             row_layout = QHBoxLayout(row_widget)

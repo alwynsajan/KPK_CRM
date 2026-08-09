@@ -214,6 +214,7 @@ class CustomerSelectorDialog(QDialog):
         self.customerListWidget.itemSelectionChanged.connect(
             self.updateSelectButtonState
         )
+        self.customerListWidget.itemDoubleClicked.connect(self.selectCustomer)
 
         # Set list to show more items - smaller font, more rows
         self.customerListWidget.setStyleSheet("""

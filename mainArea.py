@@ -2,9 +2,9 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QHBoxLayout,
     QPushButton, QTableWidget, QHeaderView, QSizePolicy,
     QTableWidgetItem, QRadioButton, QButtonGroup, QMessageBox,
-    QFrame, QFormLayout, QGroupBox
+    QFrame, QFormLayout, QGroupBox, QApplication
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer, QEvent
 from PySide6.QtGui import QIntValidator, QDoubleValidator
 from dbClient import DbClient
 from customerSelectorDialog import openCustomerSelector
@@ -12,7 +12,7 @@ from productSelectorDialog import openProductSelector
 from generatePDF import generateInvoice
 from generatePDF import printPDF
 from datetime import datetime
-from PySide6.QtCore import QTimer
+import time
 
 # ------------------- Modern Line Edit -------------------
 class ModernLineEdit(QLineEdit):
@@ -208,6 +208,13 @@ class MainArea(QWidget):
         self.barcode_timer = QTimer()
         self.barcode_timer.setSingleShot(True)
         self.barcode_timer.timeout.connect(self.processBarcode)
+
+        # Global barcode scan (works without focusing the product name field)
+        self._scan_buffer = ""
+        self._last_scan_time = 0.0
+        app = QApplication.instance()
+        if app:
+            app.installEventFilter(self)
 
         # Main layout with stretch factors
         mainAreaLayout = QVBoxLayout(self)
@@ -572,6 +579,70 @@ class MainArea(QWidget):
         self.qtyInput.clear()
         self.priceInput.clear()
 
+    def _shouldHandleGlobalScan(self):
+        """Only capture scans on the main sales screen (not inside dialogs)."""
+        if not self.isVisible():
+            return False
+        if QApplication.activeModalWidget() is not None:
+            return False
+        if QApplication.activeWindow() is not self.window():
+            return False
+        return True
+
+    def _resetScanBuffer(self):
+        self._scan_buffer = ""
+        self._last_scan_time = 0.0
+
+    def _stripBarcodeFromFocus(self, barcode):
+        """Remove scanned digits that landed in the focused line edit."""
+        focus = QApplication.focusWidget()
+        if not isinstance(focus, QLineEdit) or not barcode:
+            return
+        text = focus.text()
+        if text == barcode:
+            focus.clear()
+        elif text.endswith(barcode):
+            focus.setText(text[: -len(barcode)])
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.KeyPress and self._shouldHandleGlobalScan():
+            key = event.key()
+            text = event.text()
+            now = time.monotonic()
+
+            if key in (Qt.Key_Return, Qt.Key_Enter):
+                # Scanner finished: rapid digit burst ending with Enter
+                if (
+                    self._scan_buffer
+                    and len(self._scan_buffer) >= 6
+                    and (now - self._last_scan_time) < 0.15
+                ):
+                    barcode = self._scan_buffer
+                    self._resetScanBuffer()
+                    self.barcode_timer.stop()
+                    self._stripBarcodeFromFocus(barcode)
+                    self.barcode_buffer = barcode
+                    self.processBarcode()
+                    return True
+                self._resetScanBuffer()
+                return False
+
+            if text and text.isdigit():
+                # New burst if typing paused (human) vs continuous (scanner)
+                if self._last_scan_time and (now - self._last_scan_time) > 0.12:
+                    self._scan_buffer = ""
+                self._scan_buffer += text
+                self._last_scan_time = now
+                self.barcode_buffer = self._scan_buffer
+                # Fallback for scanners that do not send Enter
+                self.barcode_timer.start(120)
+                return False
+
+            if text:
+                self._resetScanBuffer()
+
+        return super().eventFilter(obj, event)
+
     def onProductNameTextChanged(self, text):
         """Handle text changes in product name input for barcode detection"""
         # If text is empty, reset barcode buffer
@@ -589,59 +660,48 @@ class MainArea(QWidget):
             self.barcode_buffer = ""
 
     def processBarcode(self):
-        """Process the barcode after typing delay"""
-        if self.barcode_buffer and len(self.barcode_buffer) >= 6:
-            try:
-                # Try to find product by barcode
-                db = DbClient()
-                product_data = db.getProductByBarcode(int(self.barcode_buffer))
-                
-                if product_data:
-                    # Get quantity from qty input or default to 1
-                    qty_text = self.qtyInput.text().strip()
-                    if not qty_text:
-                        qty = 1.0
-                        self.qtyInput.setText("1")  # Set default quantity
-                    else:
-                        qty = float(qty_text)
-                    
-                    # Add product to table
-                    self.addProductRow({
-                        "name": product_data.get("name", "Unknown Product"),
-                        "price": float(product_data.get("price", 0)),
-                        "productBarCode": self.barcode_buffer,
-                        "qty": qty
-                    })
-                    
-                    # Clear the input fields after adding
-                    self.productNameInput.clear()
-                    self.qtyInput.clear()
-                    self.priceInput.clear()
-                    
-                    # Show success message
-                    # QMessageBox.information(
-                    #     self,
-                    #     "Product Added",
-                    #     f"'{product_data.get('name')}' added to cart."
-                    # )
+        """Process the barcode after typing delay or global scan"""
+        barcode = (self.barcode_buffer or self._scan_buffer or "").strip()
+        self.barcode_timer.stop()
+        self.barcode_buffer = ""
+        self._resetScanBuffer()
+
+        if not barcode or len(barcode) < 6:
+            return
+
+        try:
+            db = DbClient()
+            product_data = db.getProductByBarcode(barcode)
+
+            if product_data:
+                qty_text = self.qtyInput.text().strip()
+                if not qty_text:
+                    qty = 1.0
+                    self.qtyInput.setText("1")
                 else:
-                    # Product not found
-                    QMessageBox.warning(
-                        self,
-                        "Product Not Found",
-                        f"No product found with barcode: {self.barcode_buffer}\n\nPlease enter product details manually."
-                    )
-                    # Don't clear the input - let user see what they typed
-                    self.productNameInput.setFocus()
-                    self.productNameInput.clear()
-                    
-            except Exception as e:
-                print(f"Error processing barcode: {e}")
-                # If error, just ignore - user can continue typing
-                pass
-            
-            # Clear buffer after processing
-            self.barcode_buffer = ""
+                    qty = float(qty_text)
+
+                self.addProductRow({
+                    "name": product_data.get("name", "Unknown Product"),
+                    "price": float(product_data.get("price", 0)),
+                    "productBarCode": barcode,
+                    "qty": qty
+                })
+
+                self.productNameInput.clear()
+                self.qtyInput.clear()
+                self.priceInput.clear()
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Product Not Found",
+                    f"No product found with barcode: {barcode}\n\nPlease enter product details manually."
+                )
+                self.productNameInput.setFocus()
+                self.productNameInput.clear()
+
+        except Exception as e:
+            print(f"Error processing barcode: {e}")
 
     # ------------------- Add Product Logic -------------------
     def addProductRow(self, productData):

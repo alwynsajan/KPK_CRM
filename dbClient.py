@@ -317,7 +317,7 @@ class DbClient:
                 if barcode:
 
                     cursor.execute(
-                        "SELECT productID, stock FROM productData WHERE productBarCode = %s",
+                        "SELECT productID, stock, name FROM productData WHERE productBarCode = %s",
                         (barcode,)
                     )
                     row = cursor.fetchone()
@@ -325,10 +325,13 @@ class DbClient:
                     if row:
                         productID = row[0]
                         currentStock = row[1]
+                        productName = row[2] or item.get("name", "")
 
                         newStock = currentStock - quantity
                         if newStock < 0:
-                            raise ValueError(f"Not enough stock for barcode {barcode}")
+                            raise ValueError(
+                                f"Not enough stock for {productName} (barcode {barcode})"
+                            )
 
                         cursor.execute(
                             "UPDATE productData SET stock = %s WHERE productID = %s",

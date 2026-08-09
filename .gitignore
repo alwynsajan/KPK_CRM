@@ -3,3 +3,5 @@ __pycache__/
 CartridgeWorld-CRM-main/
 config.json
 invoices/
+*.DS_Store
+

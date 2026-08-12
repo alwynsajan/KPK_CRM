@@ -769,6 +769,7 @@ class MainArea(QWidget):
 
         # ---------------- Barcode (1) ----------------
         barcode_item = QTableWidgetItem(barcode)
+        barcode_item.setFlags(barcode_item.flags() & ~Qt.ItemIsEditable)
         barcode_item.setTextAlignment(Qt.AlignCenter)
         self.productTable.setItem(row, 1, barcode_item)
 

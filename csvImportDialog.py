@@ -113,7 +113,8 @@ class CSVImportDialog(QDialog):
         # Instructions
         instructions = QLabel(
             "Select a CSV file containing product data.\n"
-            "Required columns: productBarCode, name, price, pdtType\n"
+            "Required columns: productBarCode, name, price, stock\n"
+            "Optional columns: brand, pdtType"
         )
         instructions.setStyleSheet("""
             QLabel {
@@ -296,7 +297,7 @@ class CSVImportDialog(QDialog):
             return
         
         # Check required columns
-        required_columns = ['productBarCode', 'name', 'price']
+        required_columns = ['productBarCode', 'name', 'price', 'stock']
         first_row = self.csv_data[0]
         missing_columns = [col for col in required_columns if col not in first_row]
         
@@ -323,12 +324,14 @@ class CSVImportDialog(QDialog):
                 product_data = {
                     "productBarCode": str(row['productBarCode']),
                     "name": row['name'],
+                    "brand": row.get('brand', '') or '',
                     "price": float(row['price']),
-                    "pdtType": row.get('pdtType', '')
+                    "pdtType": row.get('pdtType', '') or '',
+                    "stock": int(float(row['stock'])),
                 }
                 
-                # Insert into database
-                result = db.addProductData(product_data)
+                # Insert/update using CSV stock (no increment)
+                result = db.importProductData(product_data)
                 if result["status"] == "Success":
                     success_count += 1
                 else:

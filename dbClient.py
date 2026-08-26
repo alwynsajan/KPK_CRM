@@ -201,6 +201,63 @@ class DbClient:
 
         return response
 
+    def importProductData(self, productData):
+        """Insert/update product from CSV using the provided stock value (no increment)."""
+        query = """
+            INSERT INTO productData
+                (productBarCode, name, brand, price, pdtType, stock)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                name = VALUES(name),
+                brand = VALUES(brand),
+                price = VALUES(price),
+                pdtType = VALUES(pdtType),
+                stock = VALUES(stock)
+        """
+
+        try:
+            conn = self.connectToDB()
+            cursor = conn.cursor()
+
+            cursor.execute(query, (
+                str(productData["productBarCode"]),
+                productData["name"],
+                productData.get("brand", "") or "",
+                productData["price"],
+                productData.get("pdtType", "") or "",
+                int(productData["stock"]),
+            ))
+
+            conn.commit()
+
+            response = {
+                "status": "Success",
+                "message": "Product imported successfully"
+            }
+
+        except mysql.connector.Error as err:
+            print(f"Database Error: {err}")
+            response = {
+                "status": "Failed",
+                "message": f"Database error: {err}"
+            }
+
+        except Exception as e:
+            print(f"Unexpected Error: {e}")
+            response = {
+                "status": "Failed",
+                "message": f"Unexpected error: {e}"
+            }
+
+        finally:
+            try:
+                cursor.close()
+                conn.close()
+            except:
+                pass
+
+        return response
+
 
     def getAllProducts(self):
         """Retrieve all product details from productData table"""

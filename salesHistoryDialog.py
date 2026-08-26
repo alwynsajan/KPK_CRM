@@ -317,10 +317,10 @@ class SalesHistoryDialog(QDialog):
         self.daysLayout.addWidget(self.daysInfo)
         
         self.daysCard.layout.addLayout(self.daysLayout)
-        self.daysCard.setMinimumWidth(280)
-        columns_layout.addWidget(self.daysCard, 2)
+        self.daysCard.setMinimumWidth(140)
+        columns_layout.addWidget(self.daysCard, 20)  # 20% width
 
-        # Column 2: Sales list (30%)
+        # Column 2: Sales list (20%)
 
         self.salesCard = CardFrame(f"Sales for Selected Day")
         self.salesCard.hide()
@@ -373,10 +373,10 @@ class SalesHistoryDialog(QDialog):
         self.salesLayout.addWidget(self.salesInfo)
         
         self.salesCard.layout.addLayout(self.salesLayout)
-        self.salesCard.setMinimumWidth(320)
-        columns_layout.addWidget(self.salesCard, 3)  # 30% width
+        self.salesCard.setMinimumWidth(140)
+        columns_layout.addWidget(self.salesCard, 20)  # 20% width
 
-        # Column 3: Sale details 
+        # Column 3: Sale details (60%)
         self.detailsCard = CardFrame("Sale Details")
         self.detailsCard.hide()
         
@@ -394,7 +394,8 @@ class SalesHistoryDialog(QDialog):
 
         self.detailsScroll.setWidget(self.detailsContainer)
         self.detailsCard.layout.addWidget(self.detailsScroll)
-        columns_layout.addWidget(self.detailsCard, 5)  # 50% width
+        self.detailsCard.setMinimumWidth(360)
+        columns_layout.addWidget(self.detailsCard, 60)  # 60% width
         
         main_layout.addWidget(columns_container, 1)
 
